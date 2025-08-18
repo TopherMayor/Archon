@@ -427,6 +427,16 @@ async def get_llm_client(
                         "OpenAI API key not found and Ollama fallback failed"
                     ) from fallback_error
 
+        elif provider_name == "openrouter":
+            if not api_key:
+                raise ValueError("OpenRouter API key not found")
+
+            client = openai.AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url or "https://openrouter.ai/api/v1",
+            )
+            logger.info(f"OpenRouter client created successfully with base URL: {base_url or 'https://openrouter.ai/api/v1'}")
+
         elif provider_name == "ollama":
             # For Ollama, get the optimal instance based on usage
             ollama_base_url = await _get_optimal_ollama_instance(
@@ -497,7 +507,7 @@ async def get_llm_client(
             logger.info("Grok client created successfully")
 
         else:
-            raise ValueError(f"Unsupported LLM provider: {provider_name}")
+            raise ValueError(f"Unsupported LLM provider: {provider_name}. Supported providers: openai, openrouter, google, ollama")
 
     except Exception as e:
         logger.error(
@@ -646,6 +656,9 @@ async def get_embedding_model(provider: str | None = None) -> str:
 
         # Return provider-specific defaults
         if provider_name == "openai":
+            return "text-embedding-3-small"
+        elif provider_name == "openrouter":
+            # OpenRouter supports OpenAI embedding models
             return "text-embedding-3-small"
         elif provider_name == "ollama":
             # Ollama default embedding model
