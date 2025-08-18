@@ -92,14 +92,15 @@ INSERT INTO archon_settings (key, encrypted_value, is_encrypted, category, descr
 
 -- LLM Provider configuration settings
 INSERT INTO archon_settings (key, value, is_encrypted, category, description) VALUES
-('LLM_PROVIDER', 'openai', false, 'rag_strategy', 'LLM provider to use: openai, ollama, or google'),
+('LLM_PROVIDER', 'openai', false, 'rag_strategy', 'LLM provider to use: openai, openrouter, google, or ollama'),
 ('LLM_BASE_URL', NULL, false, 'rag_strategy', 'Custom base URL for LLM provider (mainly for Ollama, e.g., http://localhost:11434/v1)'),
 ('EMBEDDING_MODEL', 'text-embedding-3-small', false, 'rag_strategy', 'Embedding model for vector search and similarity matching (required for all embedding operations)')
 ON CONFLICT (key) DO NOTHING;
 
 -- Add provider API key placeholders
 INSERT INTO archon_settings (key, encrypted_value, is_encrypted, category, description) VALUES
-('GOOGLE_API_KEY', NULL, true, 'api_keys', 'Google API Key for Gemini models. Get from: https://aistudio.google.com/apikey')
+('GOOGLE_API_KEY', NULL, true, 'api_keys', 'Google API Key for Gemini models. Get from: https://aistudio.google.com/apikey'),
+('OPENROUTER_API_KEY', NULL, true, 'api_keys', 'OpenRouter API Key for accessing OpenRouter models. Get from: https://openrouter.ai/keys')
 ON CONFLICT (key) DO NOTHING;
 
 -- Code Extraction Settings Migration

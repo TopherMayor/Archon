@@ -66,21 +66,22 @@ export const RAGSettings = ({
               accentColor="green"
               options={[
                 { value: 'openai', label: 'OpenAI' },
+                { value: 'openrouter', label: 'OpenRouter' },
                 { value: 'google', label: 'Google Gemini' },
                 { value: 'ollama', label: 'Ollama (Coming Soon)' },
               ]}
             />
           </div>
-          {ragSettings.LLM_PROVIDER === 'ollama' && (
+          {(ragSettings.LLM_PROVIDER === 'ollama' || ragSettings.LLM_PROVIDER === 'openrouter') && (
             <div>
               <Input
-                label="Ollama Base URL"
-                value={ragSettings.LLM_BASE_URL || 'http://localhost:11434/v1'}
+                label={ragSettings.LLM_PROVIDER === 'ollama' ? "Ollama Base URL" : "OpenRouter Base URL"}
+                value={ragSettings.LLM_BASE_URL || (ragSettings.LLM_PROVIDER === 'ollama' ? 'http://localhost:11434/v1' : 'https://openrouter.ai/api/v1')}
                 onChange={e => setRagSettings({
                   ...ragSettings,
                   LLM_BASE_URL: e.target.value
                 })}
-                placeholder="http://localhost:11434/v1"
+                placeholder={ragSettings.LLM_PROVIDER === 'ollama' ? "http://localhost:11434/v1" : "https://openrouter.ai/api/v1"}
                 accentColor="green"
               />
             </div>
@@ -480,6 +481,8 @@ function getModelPlaceholder(provider: string): string {
   switch (provider) {
     case 'openai':
       return 'e.g., gpt-4o-mini';
+    case 'openrouter':
+      return 'e.g., openai/gpt-4o-mini, anthropic/claude-3-5-sonnet';
     case 'ollama':
       return 'e.g., llama2, mistral';
     case 'google':
@@ -493,6 +496,8 @@ function getEmbeddingPlaceholder(provider: string): string {
   switch (provider) {
     case 'openai':
       return 'Default: text-embedding-3-small';
+    case 'openrouter':
+      return 'e.g., openai/text-embedding-3-small';
     case 'ollama':
       return 'e.g., nomic-embed-text';
     case 'google':

@@ -100,6 +100,16 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
             client = openai.AsyncOpenAI(api_key=api_key)
             logger.info("OpenAI client created successfully")
 
+        elif provider_name == "openrouter":
+            if not api_key:
+                raise ValueError("OpenRouter API key not found")
+
+            client = openai.AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url or "https://openrouter.ai/api/v1",
+            )
+            logger.info(f"OpenRouter client created successfully with base URL: {base_url or 'https://openrouter.ai/api/v1'}")
+
         elif provider_name == "ollama":
             # Ollama requires an API key in the client but doesn't actually use it
             client = openai.AsyncOpenAI(
@@ -119,7 +129,7 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
             logger.info("Google Gemini client created successfully")
 
         else:
-            raise ValueError(f"Unsupported LLM provider: {provider_name}")
+            raise ValueError(f"Unsupported LLM provider: {provider_name}. Supported providers: openai, openrouter, google, ollama")
 
         yield client
 
@@ -171,6 +181,9 @@ async def get_embedding_model(provider: str | None = None) -> str:
 
         # Return provider-specific defaults
         if provider_name == "openai":
+            return "text-embedding-3-small"
+        elif provider_name == "openrouter":
+            # OpenRouter supports OpenAI embedding models
             return "text-embedding-3-small"
         elif provider_name == "ollama":
             # Ollama default embedding model

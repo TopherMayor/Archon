@@ -443,6 +443,7 @@ class CredentialService:
         """Get API key for a specific provider."""
         key_mapping = {
             "openai": "OPENAI_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
             "google": "GOOGLE_API_KEY",
             "ollama": None,  # No API key needed
         }
@@ -458,6 +459,8 @@ class CredentialService:
             return rag_settings.get("LLM_BASE_URL", "http://localhost:11434/v1")
         elif provider == "google":
             return "https://generativelanguage.googleapis.com/v1beta/openai/"
+        elif provider == "openrouter":
+            return "https://openrouter.ai/api/v1"
         return None  # Use default for OpenAI
 
     async def set_active_provider(self, provider: str, service_type: str = "llm") -> bool:
@@ -509,6 +512,7 @@ async def initialize_credentials() -> None:
     # LLM provider credentials (for sync client support)
     provider_credentials = [
         "GOOGLE_API_KEY",  # Google Gemini API key
+        "OPENROUTER_API_KEY",  # OpenRouter API key
         "LLM_PROVIDER",  # Selected provider
         "LLM_BASE_URL",  # Ollama base URL
         "EMBEDDING_MODEL",  # Custom embedding model
