@@ -446,12 +446,19 @@ class CredentialService:
             "openrouter": "OPENROUTER_API_KEY",
             "google": "GOOGLE_API_KEY",
             "ollama": None,  # No API key needed
+            "qwen": None,  # Uses OAuth authentication instead
         }
 
         key_name = key_mapping.get(provider)
         if key_name:
             return await self.get_credential(key_name)
-        return "ollama" if provider == "ollama" else None
+        elif provider == "ollama":
+            return "ollama"
+        elif provider == "qwen":
+            # Qwen uses OAuth - return a placeholder
+            return "qwen-oauth"
+        else:
+            return None
 
     def _get_provider_base_url(self, provider: str, rag_settings: dict) -> str | None:
         """Get base URL for provider."""
@@ -461,6 +468,9 @@ class CredentialService:
             return "https://generativelanguage.googleapis.com/v1beta/openai/"
         elif provider == "openrouter":
             return "https://openrouter.ai/api/v1"
+        elif provider == "qwen":
+            # Get custom endpoint or use default
+            return rag_settings.get("QWEN_API_ENDPOINT", "https://portal.qwen.ai/api/v1")
         return None  # Use default for OpenAI
 
     async def set_active_provider(self, provider: str, service_type: str = "llm") -> bool:
@@ -513,6 +523,9 @@ async def initialize_credentials() -> None:
     provider_credentials = [
         "GOOGLE_API_KEY",  # Google Gemini API key
         "OPENROUTER_API_KEY",  # OpenRouter API key
+        "QWEN_USERNAME",  # Qwen OAuth username
+        "QWEN_PASSWORD",  # Qwen OAuth password
+        "QWEN_API_ENDPOINT",  # Qwen API endpoint
         "LLM_PROVIDER",  # Selected provider
         "LLM_BASE_URL",  # Ollama base URL
         "EMBEDDING_MODEL",  # Custom embedding model

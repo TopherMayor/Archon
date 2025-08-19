@@ -1,0 +1,62 @@
+#!/bin/bash
+# Archon Docker Startup Script
+
+set -e
+
+echo "🚀 Starting Archon Services"
+echo "=========================="
+
+# Ensure we're in the right directory
+if [[ ! -f "docker-compose.yml" ]]; then
+    echo "❌ Not in Archon directory. Please run from /Volumes/2TB/AI/Archon"
+    exit 1
+fi
+
+# Check Docker daemon
+if ! docker info >/dev/null 2>&1; then
+    echo "🐳 Starting Docker Desktop..."
+    open -a "/Volumes/2TB/External-Applications/Docker.app"
+    
+    echo "⏳ Waiting for Docker daemon..."
+    count=0
+    while ! docker info >/dev/null 2>&1 && [ $count -lt 30 ]; do
+        sleep 2
+        ((count++))
+        printf "."
+    done
+    echo ""
+    
+    if ! docker info >/dev/null 2>&1; then
+        echo "❌ Docker failed to start"
+        exit 1
+    fi
+fi
+
+echo "✅ Docker is ready"
+
+# Check for .env file
+if [[ ! -f ".env" ]]; then
+    echo "⚠️  No .env file found. Creating from .env.example..."
+    cp .env.example .env
+    echo "📝 Please edit .env with your configuration before continuing"
+    exit 1
+fi
+
+# Start services
+echo "🔧 Starting Archon services..."
+docker compose up -d
+
+# Wait for services to be ready
+echo "⏳ Waiting for services to start..."
+sleep 10
+
+# Show status
+echo "📊 Service Status:"
+docker compose ps
+
+echo ""
+echo "🎉 Archon services started!"
+echo "🌐 Frontend: http://localhost:3737"
+echo "🔧 Server API: http://localhost:8181"
+echo "🤖 MCP Service: http://localhost:8051"
+echo "🧠 Agents Service: http://localhost:8052"

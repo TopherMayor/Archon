@@ -13,6 +13,7 @@ import openai
 
 from ..config.logfire_config import get_logger
 from .credential_service import credential_service
+from .qwen_auth_service import qwen_auth_service
 
 logger = get_logger(__name__)
 
@@ -128,8 +129,35 @@ async def get_llm_client(provider: str | None = None, use_embedding_provider: bo
             )
             logger.info("Google Gemini client created successfully")
 
+        elif provider_name == "qwen":
+            # Qwen uses OAuth authentication instead of API keys
+            try:
+                # Get authentication headers from Qwen auth service
+                auth_headers = await qwen_auth_service.get_auth_headers(base_url)
+                
+                # Create custom HTTP client with authentication
+                import httpx
+                
+                # Custom httpx client with auth headers
+                http_client = httpx.AsyncClient(
+                    headers=auth_headers,
+                    timeout=30.0
+                )
+                
+                client = openai.AsyncOpenAI(
+                    api_key="qwen-oauth",  # Placeholder since OpenAI client requires it
+                    base_url=base_url or "https://portal.qwen.ai/api/v1",
+                    http_client=http_client
+                )
+                
+                logger.info(f"Qwen client created successfully with base URL: {base_url or 'https://portal.qwen.ai/api/v1'}")
+                
+            except Exception as e:
+                logger.error(f"Failed to create Qwen client: {e}")
+                raise ValueError(f"Qwen authentication failed: {e}")
+
         else:
-            raise ValueError(f"Unsupported LLM provider: {provider_name}. Supported providers: openai, openrouter, google, ollama")
+            raise ValueError(f"Unsupported LLM provider: {provider_name}. Supported providers: openai, openrouter, google, ollama, qwen")
 
         yield client
 
@@ -191,6 +219,9 @@ async def get_embedding_model(provider: str | None = None) -> str:
         elif provider_name == "google":
             # Google's embedding model
             return "text-embedding-004"
+        elif provider_name == "qwen":
+            # Qwen's embedding model
+            return "text-embedding-v1"
         else:
             # Fallback to OpenAI's model
             return "text-embedding-3-small"
