@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Baby Monitor - Alert Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/alerts.css">
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-bell"></i> Aegis Baby Monitor</h1>
+            <p>Alert Management System</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link"><i class="fas fa-video"></i> Live Stream</a>
+                <a href="/alerts.html" class="nav-link active"><i class="fas fa-bell"></i> Alerts</a>
+                <a href="/settings.html" class="nav-link"><i class="fas fa-cog"></i> Settings</a>
+            </nav>
+        </header>
+
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="active-alerts">
+                    <i class="fas fa-bell"></i> Active Alerts
+                </button>
+                <button class="tab-button" data-tab="history">
+                    <i class="fas fa-history"></i> Alert History
+                </button>
+                <button class="tab-button" data-tab="preferences">
+                    <i class="fas fa-sliders-h"></i> Notification Preferences
+                </button>
+                <button class="tab-button" data-tab="test">
+                    <i class="fas fa-vial"></i> Test Alerts
+                </button>
+            </div>
+
+            <!-- Active Alerts Tab -->
+            <div class="tab-content active" id="active-alerts">
+                <div class="section-header">
+                    <h2>Active Alerts</h2>
+                    <button class="btn refresh-btn" id="refreshActiveAlerts">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-title">Total Active</div>
+                        <div class="stat-value" id="activeCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Critical</div>
+                        <div class="stat-value" id="criticalCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Unacknowledged</div>
+                        <div class="stat-value" id="unackCount">0</div>
+                    </div>
+                </div>
+                
+                <div class="alerts-container" id="activeAlertsList">
+                    <div class="loading-indicator">
+                        <i class="fas fa-spinner fa-pulse"></i> Loading alerts...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert History Tab -->
+            <div class="tab-content" id="history">
+                <div class="section-header">
+                    <h2>Alert History</h2>
+                    <div class="header-actions">
+                        <button class="btn" id="exportHistory">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <button class="btn refresh-btn" id="refreshHistory">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="filter-container">
+                    <div class="filter-group">
+                        <label>Alert Type</label>
+                        <select id="typeFilter" multiple>
+                            <option value="motion">Motion</option>
+                            <option value="sound">Sound</option>
+                            <option value="temperature">Temperature</option>
+                            <option value="system">System</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Priority</label>
+                        <select id="priorityFilter" multiple>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select id="statusFilter" multiple>
+                            <option value="active">Active</option>
+                            <option value="acknowledged">Acknowledged</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Date Range</label>
+                        <div class="date-range">
+                            <input type="date" id="dateFrom">
+                            <span>to</span>
+                            <input type="date" id="dateTo">
+                        </div>
+                    </div>
+                    <button class="btn" id="applyFilters">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                </div>
+                
+                <div class="history-stats">
+                    <div class="stat-card">
+                        <div class="stat-title">Total Alerts</div>
+                        <div class="stat-value" id="totalAlertsCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Avg. Resolution Time</div>
+                        <div class="stat-value" id="avgResolutionTime">0 min</div>
+                    </div>
+                </div>
+                
+                <div class="alerts-container" id="historyList">
+                    <div class="loading-indicator">
+                        <i class="fas fa-spinner fa-pulse"></i> Loading history...
+                    </div>
+                </div>
+                
+                <div class="pagination">
+                    <button class="btn pagination-btn" id="prevPage" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="paginationInfo">Page 1 of 1</span>
+                    <button class="btn pagination-btn" id="nextPage" disabled>
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notification Preferences Tab -->
+            <div class="tab-content" id="preferences">
+                <div class="section-header">
+                    <h2>Notification Preferences</h2>
+                    <button class="btn" id="resetPreferences">
+                        <i class="fas fa-undo"></i> Reset to Defaults
+                    </button>
+                </div>
+                
+                <div class="preference-section">
+                    <h3><i class="fas fa-moon"></i> Do Not Disturb</h3>
+                    <div class="toggle-container">
+                        <label class="toggle">
+                            <input type="checkbox" id="dndEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span>Enable Do Not Disturb</span>
+                    </div>
+                    
+                    <div class="time-range">
+                        <label>From:</label>
+                        <input type="time" id="dndStartTime" value="22:00">
+                        <label>To:</label>
+                        <input type="time" id="dndEndTime" value="07:00">
+                    </div>
+                </div>
+                
+                <div class="preference-section">
+                    <h3><i class="fas fa-bell"></i> Alert Types</h3>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Motion Detection</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="motionEnabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <select id="motionPriority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Sound Detection</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="soundEnabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <select id="soundPriority">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high" selected>High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Temperature Alert</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="temperatureEnabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <select id="temperaturePriority">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high" selected>High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">System Alerts</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="systemEnabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <select id="systemPriority">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical" selected>Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preference-section">
+                    <h3><i class="fas fa-mobile-alt"></i> Notification Channels</h3>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Push Notifications</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="pushEnabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <button class="btn" id="testPush">
+                                <i class="fas fa-vial"></i> Test
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Email</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="emailEnabled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <input type="email" id="emailAddress" placeholder="Enter email address">
+                            <button class="btn" id="testEmail">
+                                <i class="fas fa-vial"></i> Test
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">SMS</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="smsEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <input type="tel" id="phoneNumber" placeholder="Enter phone number">
+                            <button class="btn" id="testSms">
+                                <i class="fas fa-vial"></i> Test
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preference-section">
+                    <h3><i class="fas fa-hourglass-half"></i> Escalation Settings</h3>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Auto-escalate unacknowledged alerts</div>
+                        <div class="preference-controls">
+                            <div class="toggle-container">
+                                <label class="toggle">
+                                    <input type="checkbox" id="escalationEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preference-row">
+                        <div class="preference-type">Escalation timeout (minutes)</div>
+                        <div class="preference-controls">
+                            <input type="number" id="escalationTimeout" min="1" max="60" value="15">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn danger" id="cancelPreferences">Cancel</button>
+                    <button class="btn success" id="savePreferences">Save Preferences</button>
+                </div>
+            </div>
+
+            <!-- Test Alerts Tab -->
+            <div class="tab-content" id="test">
+                <div class="section-header">
+                    <h2>Test Alerts</h2>
+                </div>
+                
+                <div class="test-section">
+                    <h3><i class="fas fa-bell"></i> Create Test Alert</h3>
+                    
+                    <div class="form-group">
+                        <label for="testAlertType">Alert Type</label>
+                        <select id="testAlertType">
+                            <option value="motion">Motion Detection</option>
+                            <option value="sound">Sound Detection</option>
+                            <option value="temperature">Temperature</option>
+                            <option value="connection">Connection Lost</option>
+                            <option value="system">System Error</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="testAlertPriority">Priority</label>
+                        <select id="testAlertPriority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="testAlertTitle">Title</label>
+                        <input type="text" id="testAlertTitle" placeholder="Test Alert Title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="testAlertMessage">Message</label>
+                        <textarea id="testAlertMessage" placeholder="Test alert message details"></textarea>
+                    </div>
+                    
+                    <button class="btn success" id="createTestAlert">
+                        <i class="fas fa-plus-circle"></i> Create Test Alert
+                    </button>
+                </div>
+                
+                <div class="test-section">
+                    <h3><i class="fas fa-vial"></i> System Testing</h3>
+                    
+                    <div class="test-grid">
+                        <button class="btn test-btn" id="testAllChannels">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Test All Notification Channels</span>
+                        </button>
+                        
+                        <button class="btn test-btn" id="validateConfig">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Validate Alert Configuration</span>
+                        </button>
+                        
+                        <button class="btn test-btn" id="testEscalation">
+                            <i class="fas fa-level-up-alt"></i>
+                            <span>Test Alert Escalation</span>
+                        </button>
+                        
+                        <button class="btn test-btn" id="runFullTest">
+                            <i class="fas fa-tasks"></i>
+                            <span>Run Full System Test</span>
+                        </button>
+                    </div>
+                    
+                    <div class="test-result" id="testResults">
+                        <div class="test-result-header">
+                            <h4>Test Results</h4>
+                            <button class="btn-icon" id="clearResults">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="test-result-content">
+                            <p>No test results yet. Run a test to see results here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>&copy; 2025 Aegis Baby Monitor - Secure, Private, Self-Hosted</p>
+        </footer>
+    </div>
+
+    <div class="alert-details-modal" id="alertDetailsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Alert Details</h3>
+                <button class="close-modal" id="closeModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="alertDetailsContent">
+                <!-- Alert details will be populated here -->
+            </div>
+            <div class="modal-footer" id="alertDetailsActions">
+                <!-- Action buttons will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/alerts.js"></script>
+</body>
+</html>
