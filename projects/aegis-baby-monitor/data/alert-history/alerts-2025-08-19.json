@@ -1,0 +1,11 @@
+[
+  {
+    "id": "history-test-1755581270072",
+    "type": "system",
+    "priority": "low",
+    "title": "History Test Alert",
+    "message": "Testing alert history functionality",
+    "timestamp": "2025-08-19T05:27:50.072Z",
+    "status": "resolved"
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "name": "aegis-baby-monitor",
+  "version": "1.0.0",
+  "description": "A Self-Hosted Baby Monitor Software with WebRTC streaming",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "lint": "eslint src/",
+    "install:basic": "npm install --omit=optional",
+    "install:full": "npm install",
+    "setup": "mkdir -p data logs && npm run install:basic",
+    "docker:build": "docker build -t aegis-baby-monitor .",
+    "docker:run": "docker run -p 3000:3000 -p 8080:8080 aegis-baby-monitor"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "simple-peer": "^9.11.1",
+    "ws": "^8.14.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "sqlite3": "^5.1.6",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1",
+    "nodemailer": "^6.9.8",
+    "twilio": "^4.19.3",
+    "uuid": "^9.0.1",
+    "express-validator": "^7.0.1"
+  },
+  "optionalDependencies": {
+    "wrtc": "^0.4.7",
+    "node-media-server": "^2.6.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "canvas": "^2.11.2",
+    "jimp": "^0.22.10"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "eslint": "^8.55.0",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  },
+  "keywords": [
+    "baby-monitor",
+    "webrtc",
+    "streaming",
+    "self-hosted",
+    "privacy"
+  ],
+  "author": "Aegis Baby Monitor Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "doNotDisturb": {
+    "enabled": true,
+    "startTime": "22:00",
+    "endTime": "07:00",
+    "timezone": "UTC",
+    "exceptCritical": true
+  },
+  "channels": {
+    "push": {
+      "enabled": true,
+      "deviceTokens": [
+        "test-token"
+      ]
+    },
+    "email": {
+      "enabled": true,
+      "addresses": [],
+      "maxFrequency": 5
+    },
+    "sms": {
+      "enabled": false,
+      "phoneNumbers": [],
+      "maxFrequency": 3
+    }
+  },
+  "escalation": {
+    "enabled": true,
+    "timeoutMinutes": 5,
+    "escalateChannels": [
+      "sms",
+      "email"
+    ]
+  },
+  "testField": "test-value"
+}
