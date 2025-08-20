@@ -21,6 +21,9 @@ logger = get_logger(__name__)
 sio = get_socketio_instance()
 logger.info(f"🔗 [SOCKETIO] Socket.IO instance ID: {id(sio)}")
 
+# In-memory mapping of sid to client name
+client_names: dict[str, str] = {}
+
 # Rate limiting for Socket.IO broadcasts
 _last_broadcast_times: dict[str, float] = {}
 _min_broadcast_interval = 0.1  # Minimum 100ms between broadcasts per room
@@ -220,27 +223,14 @@ async def error_crawl_progress(progress_id: str, error_msg: str):
 async def connect(sid, environ):
     """Handle client connection."""
     client_address = environ.get("REMOTE_ADDR", "unknown")
-    query_params = environ.get("QUERY_STRING", "")
-    headers = {k: v for k, v in environ.items() if k.startswith("HTTP_")}
+    headers = {k.lower(): v for k, v in environ.items() if k.startswith("HTTP_")}
+    
+    # Extract agent name from header
+    agent_name = headers.get("http_x_agent_name", "Unnamed Agent")
+    client_names[sid] = agent_name
 
-    logger.info(f"🔌 [SOCKETIO] Client connected: {sid} from {client_address}")
-    logger.info(f"🔌 [SOCKETIO] Query params: {query_params}")
-    logger.info(f"🔌 [SOCKETIO] User-Agent: {headers.get('HTTP_USER_AGENT', 'unknown')}")
-
-    logger.debug("🔌 New connection:")
-    logger.debug(f"  - SID: {sid}")
-    logger.debug(f"  - Address: {client_address}")
-    logger.debug(f"  - Query: {query_params}")
-    logger.debug(f"  - Transport: {headers.get('HTTP_UPGRADE', 'unknown')}")
-
-    # Parse query params to check for session_id
-    if query_params:
-        import urllib.parse
-
-        params = urllib.parse.parse_qs(query_params)
-        session_id = params.get("session_id", [None])[0]
-        if session_id:
-            logger.debug(f"  - Session ID: {session_id}")
+    logger.info(f"🔌 [SOCKETIO] Client '{agent_name}' connected: {sid} from {client_address}")
+    logger.info(f"🔌 [SOCKETIO] User-Agent: {headers.get('http_user_agent', 'unknown')}")
 
     # Log total connected clients
     try:
@@ -257,10 +247,9 @@ async def connect(sid, environ):
 @sio.event
 async def disconnect(sid):
     """Handle client disconnection."""
-    # Log which rooms the client was in before disconnecting
+    agent_name = client_names.pop(sid, "Unknown Agent")
     rooms = sio.rooms(sid) if hasattr(sio, "rooms") else []
-    logger.info(f"🔌 [SOCKETIO] Client disconnected: {sid}, was in rooms: {rooms}")
-    logger.info(f"Client disconnected: {sid}, was in rooms: {rooms}")
+    logger.info(f"🔌 [SOCKETIO] Client '{agent_name}' disconnected: {sid}, was in rooms: {rooms}")
 
 
 @sio.event
