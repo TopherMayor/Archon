@@ -69,6 +69,7 @@ class CreateTaskRequest(BaseModel):
     description: str | None = None
     status: str | None = "todo"
     assignee: str | None = "User"
+    agent_name: str | None = None
     task_order: int | None = 0
     feature: str | None = None
 
@@ -528,6 +529,7 @@ async def create_task(request: CreateTaskRequest):
             title=request.title,
             description=request.description or "",
             assignee=request.assignee or "User",
+            agent_name=request.agent_name,
             task_order=request.task_order or 0,
             feature=request.feature,
         )
@@ -643,6 +645,7 @@ class UpdateTaskRequest(BaseModel):
     description: str | None = None
     status: str | None = None
     assignee: str | None = None
+    agent_name: str | None = None
     task_order: int | None = None
     feature: str | None = None
 
@@ -689,6 +692,8 @@ async def update_task(task_id: str, request: UpdateTaskRequest):
             update_fields["status"] = request.status
         if request.assignee is not None:
             update_fields["assignee"] = request.assignee
+        if request.agent_name is not None:
+            update_fields["agent_name"] = request.agent_name
         if request.task_order is not None:
             update_fields["task_order"] = request.task_order
         if request.feature is not None:

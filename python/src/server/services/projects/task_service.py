@@ -84,6 +84,7 @@ class TaskService:
         title: str,
         description: str = "",
         assignee: str = "User",
+        agent_name: str | None = None,
         task_order: int = 0,
         feature: str | None = None,
         sources: list[dict[str, Any]] = None,
@@ -139,6 +140,7 @@ class TaskService:
                 "description": description,
                 "status": task_status,
                 "assignee": assignee,
+                "agent_name": agent_name,
                 "task_order": task_order,
                 "sources": sources or [],
                 "code_examples": code_examples or [],
@@ -350,6 +352,9 @@ class TaskService:
                 if not is_valid:
                     return False, {"error": error_msg}
                 update_data["assignee"] = update_fields["assignee"]
+
+            if "agent_name" in update_fields:
+                update_data["agent_name"] = update_fields["agent_name"]
 
             if "task_order" in update_fields:
                 update_data["task_order"] = update_fields["task_order"]
