@@ -109,15 +109,17 @@ services:
       - "traefik.uds-label=true"
       # HTTP
       - "traefik.http.routers.archon-mcp.entrypoints=http"
-      - "traefik.http.routers.archon-mcp.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.archon-mcp.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
       - "traefik.http.routers.archon-mcp.priority=10"
-      - "traefik.http.routers.archon-mcp.middlewares=https-redirectscheme@file"
+      - "traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.regex=^/mcp-stream(.*)"
+      - "traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.replacement=/mcp$1"
+      - "traefik.http.routers.archon-mcp.middlewares=https-redirectscheme@file,archon-mcp-rewrite@docker"
       - "traefik.http.services.archon-mcp.loadbalancer.server.port=${ARCHON_MCP_PORT:-8051}"
       # HTTPS
       - "traefik.http.routers.archon-mcp-secure.entrypoints=https"
-      - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
       - "traefik.http.routers.archon-mcp-secure.priority=10"
-      - "traefik.http.routers.archon-mcp-secure.middlewares="
+      - "traefik.http.routers.archon-mcp-secure.middlewares=archon-mcp-rewrite@docker"
       - "traefik.http.routers.archon-mcp-secure.tls=true"
     networks:
       - app-network
@@ -199,9 +201,9 @@ services:
     ports:
       - "${ARCHON_UI_PORT:-3737}:5173"
     environment:
-      - VITE_API_URL=http://${HOST:-localhost}:${ARCHON_SERVER_PORT:-8181}
+      - VITE_API_URL=https://archon.uds.tophermayor.com
       - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
-      - HOST=${HOST:-localhost}
+      - HOST=0.0.0.0
       - VITE_HMR_HOST=localhost
       - VITE_HOST_CHECK=false
       - VITE_ORIGIN=https://archon.uds.tophermayor.com

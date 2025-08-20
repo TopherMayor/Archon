@@ -77,22 +77,38 @@ class MCPServerManager:
             self.docker_client = None
 
     def _get_container_status(self) -> str:
-        """Get the current status of the MCP container."""
+        """Get the current status of the MCP container with auto-refresh.
+
+        This defensively re-initializes the Docker client and container
+        reference when a lookup fails (e.g., after container recreation),
+        avoiding stale "not_found" states in the API layer.
+        """
+        # Ensure client exists
         if not self.docker_client:
-            return "docker_unavailable"
+            self._initialize_docker_client()
+            if not self.docker_client:
+                return "docker_unavailable"
 
-        try:
-            if self.container:
-                self.container.reload()  # Refresh container info
-            else:
-                self.container = self.docker_client.containers.get(self.container_name)
+        def _probe_once() -> str:
+            try:
+                if self.container:
+                    self.container.reload()  # Refresh container info
+                else:
+                    self.container = self.docker_client.containers.get(self.container_name)
+                return self.container.status
+            except NotFound:
+                return "not_found"
+            except Exception as e:
+                mcp_logger.error(f"Error getting container status: {str(e)}")
+                return "error"
 
-            return self.container.status
-        except NotFound:
-            return "not_found"
-        except Exception as e:
-            mcp_logger.error(f"Error getting container status: {str(e)}")
-            return "error"
+        # First probe
+        status = _probe_once()
+        if status in ("not_found", "error", "docker_unavailable"):
+            # Try a one-time refresh of client & container refs
+            self._initialize_docker_client()
+            status = _probe_once()
+        return status
 
     def _is_log_reader_active(self) -> bool:
         """Check if the log reader task is active."""

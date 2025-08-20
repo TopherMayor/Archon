@@ -224,7 +224,8 @@ export const MCPPage = () => {
       return '// Configuration not available. Please ensure the server is running.';
     }
     
-    const mcpUrl = `http://${config.host}:${config.port}/mcp`;
+        // Use Traefik HTTPS endpoint and new prefix to avoid UI subroute collision
+    const mcpUrl = `https://archon.uds.tophermayor.com/mcp-stream`;
     
     switch(ide) {
       case 'claudecode':
@@ -305,7 +306,7 @@ export const MCPPage = () => {
           title: 'Claude Code Configuration',
           steps: [
             '1. Open a terminal and run the following command:',
-            `2. claude mcp add --transport http archon http://${config?.host}:${config?.port}/mcp`,
+            `2. claude mcp add --transport http archon https://archon.uds.tophermayor.com/mcp-stream`,
             '3. The connection will be established automatically'
           ]
         };

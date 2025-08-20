@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings API Test</title>
+</head>
+<body>
+    <h1>Settings API Test</h1>
+    <div id="results"></div>
+    <script>
+        async function testSettingsAPI() {
+            const results = document.getElementById('results');
+            
+            try {
+                console.log('Testing credentials endpoints...');
+                
+                // Test 1: RAG settings
+                console.log('Fetching RAG settings...');
+                const ragResponse = await fetch('/api/credentials/categories/rag_strategy');
+                console.log('RAG response status:', ragResponse.status);
+                const ragData = await ragResponse.json();
+                console.log('RAG data:', ragData);
+                results.innerHTML += `<p>RAG Settings: ${ragResponse.status} - ${Object.keys(ragData.credentials || {}).length} items</p>`;
+                
+                // Test 2: API Keys
+                console.log('Fetching API keys...');
+                const apiResponse = await fetch('/api/credentials/categories/api_keys');
+                console.log('API response status:', apiResponse.status);
+                const apiData = await apiResponse.json();
+                console.log('API data:', apiData);
+                results.innerHTML += `<p>API Keys: ${apiResponse.status} - ${Object.keys(apiData.credentials || {}).length} items</p>`;
+                
+                // Test 3: Code extraction
+                console.log('Fetching code extraction settings...');
+                const codeResponse = await fetch('/api/credentials/categories/code_extraction');
+                console.log('Code response status:', codeResponse.status);
+                const codeData = await codeResponse.json();
+                console.log('Code data:', codeData);
+                results.innerHTML += `<p>Code Extraction: ${codeResponse.status} - ${Object.keys(codeData.credentials || {}).length} items</p>`;
+                
+                results.innerHTML += `<p style="color: green;">All tests completed successfully!</p>`;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Run test when page loads
+        window.onload = testSettingsAPI;
+    </script>
+</body>
+</html>
