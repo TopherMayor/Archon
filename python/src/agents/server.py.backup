@@ -148,17 +148,6 @@ app = FastAPI(
 )
 
 
-@app.get("/", include_in_schema=False)
-async def root():
-    """Root endpoint - returns service status"""
-    return {
-        "status": "healthy",
-        "service": "agents",
-        "agents_available": list(AVAILABLE_AGENTS.keys()),
-        "note": "This service only hosts PydanticAI agents",
-        "endpoints": ["/health", "/list", "/run"]
-    }
-
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -170,7 +159,7 @@ async def health_check():
     }
 
 
-@app.post("/run", response_model=AgentResponse)
+@app.post("/agents/run", response_model=AgentResponse)
 async def run_agent(request: AgentRequest):
     """
     Run a specific agent with the given prompt.
@@ -205,7 +194,7 @@ async def run_agent(request: AgentRequest):
         return AgentResponse(success=False, error=str(e))
 
 
-@app.get("/list")
+@app.get("/agents/list")
 async def list_agents():
     """List all available agents and their capabilities"""
     agents_info = {}
@@ -221,7 +210,7 @@ async def list_agents():
     return {"agents": agents_info, "total": len(agents_info)}
 
 
-@app.post("/{agent_type}/stream")
+@app.post("/agents/{agent_type}/stream")
 async def stream_agent(agent_type: str, request: AgentRequest):
     """
     Stream responses from an agent using Server-Sent Events (SSE).
