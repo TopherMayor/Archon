@@ -34,6 +34,16 @@ services:
       - "traefik.http.routers.archon-api-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/api`)"
       - "traefik.http.routers.archon-api-secure.priority=10"
       - "traefik.http.routers.archon-api-secure.tls=true"
+      # Socket.IO WebSocket support
+      - "traefik.http.routers.archon-socketio.entrypoints=http"
+      - "traefik.http.routers.archon-socketio.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/socket.io`)"
+      - "traefik.http.routers.archon-socketio.priority=20"
+      - "traefik.http.routers.archon-socketio.middlewares=https-redirectscheme@file"
+      # Socket.IO HTTPS
+      - "traefik.http.routers.archon-socketio-secure.entrypoints=https"
+      - "traefik.http.routers.archon-socketio-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/socket.io`)"
+      - "traefik.http.routers.archon-socketio-secure.priority=20"
+      - "traefik.http.routers.archon-socketio-secure.tls=true"
     networks:
       - app-network
       - traefik-uds
