@@ -1,0 +1,36 @@
+# Agent Name Tracking
+
+This document outlines how Archon tracks the specific AI agent responsible for task creation and modification.
+
+## `agent_name` Field
+
+The `tasks` table in the database now includes an `agent_name` column. This field stores the human-readable name of the client agent that created or last updated a task.
+
+## Client Identification
+
+Clients, such as IDE extensions, should identify themselves by including a custom `X-Agent-Name` HTTP header in their Socket.IO connection request.
+
+### Example Client Configuration
+
+```json
+{
+  "mcp_connection": {
+    "url": "ws://localhost:8051",
+    "options": {
+      "transportOptions": {
+        "polling": {
+          "extraHeaders": {
+            "X-Agent-Name": "gemini-air-instance-1"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Server-Side Handling
+
+The MCP server reads the `X-Agent-Name` header upon connection and associates the name with the client's Socket.IO session ID (`sid`). When a task is created or updated, this name is automatically saved to the `agent_name` field in the database.
+
+If a client connects without the header, it will be logged as `"Unnamed Agent"`.
