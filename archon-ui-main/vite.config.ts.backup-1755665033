@@ -277,17 +277,14 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       }
     ],
     server: {
-      host: '0.0.0.0', // Accept connections from any host
-      port: 5173, // Match the port expected in Docker
-      strictPort: false, // Don't exit if port is in use, try next port
-      cors: true, // Enable CORS for cross-origin requests
-      origin: process.env.VITE_ORIGIN || 'https://archon.uds.tophermayor.com', // Set origin for host header validation
       hmr: {
-        protocol: 'wss',
-        host: process.env.HMR_HOST || 'archon.uds.tophermayor.com',
-        port: 443,
-        clientPort: 443,
+        host: 'localhost',
       },
+      port: 5173, // Match the port expected in Docker
+      cors: true, // Enable CORS for cross-origin requests
+      host: true, // Accept connections from any host
+      // allowedHosts: "all", // This is webpack, not needed for Vite
+      strictPort: true, // Exit if port is in use
       proxy: {
         '/api': {
           target: `http://${host}:${port}`,

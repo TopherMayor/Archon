@@ -26,43 +26,22 @@ services:
       # HTTP
       - "traefik.http.routers.archon-api.entrypoints=http"
       - "traefik.http.routers.archon-api.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.archon-api.priority=10"
       - "traefik.http.routers.archon-api.middlewares=https-redirectscheme@file"
       - "traefik.http.services.archon-api.loadbalancer.server.port=${ARCHON_SERVER_PORT:-8181}"
       # HTTPS
       - "traefik.http.routers.archon-api-secure.entrypoints=https"
       - "traefik.http.routers.archon-api-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.archon-api-secure.priority=10"
       - "traefik.http.routers.archon-api-secure.tls=true"
     networks:
       - app-network
       - traefik-uds
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Docker socket for MCP container control
-      - ./python/src:/app/src # Mount source code for hot reload
-      - ./python/tests:/app/tests # Mount tests for UI test execution
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    command:
-      [
-        "python",
-        "-m",
-        "uvicorn",
-        "src.server.main:socket_app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "${ARCHON_SERVER_PORT:-8181}",
-        "--reload",
-      ]
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for MCP container control
+      - ./python/src:/app/src  # Mount source code for hot reload
+      - ./python/tests:/app/tests  # Mount tests for UI test execution
+    command: ["python", "-m", "uvicorn", "src.server.main:socket_app", "--host", "0.0.0.0", "--port", "${ARCHON_SERVER_PORT:-8181}", "--reload"]
     healthcheck:
-      test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:${ARCHON_SERVER_PORT:-8181}/health'')"',
-        ]
+      test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${ARCHON_SERVER_PORT:-8181}/health')\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -100,13 +79,11 @@ services:
       # HTTP
       - "traefik.http.routers.archon-mcp.entrypoints=http"
       - "traefik.http.routers.archon-mcp.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp`)"
-      - "traefik.http.routers.archon-mcp.priority=10"
       - "traefik.http.routers.archon-mcp.middlewares=https-redirectscheme@file,archon-mcp-strip@docker"
       - "traefik.http.services.archon-mcp.loadbalancer.server.port=${ARCHON_MCP_PORT:-8051}"
       # HTTPS
       - "traefik.http.routers.archon-mcp-secure.entrypoints=https"
       - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp`)"
-      - "traefik.http.routers.archon-mcp-secure.priority=10"
       - "traefik.http.routers.archon-mcp-secure.middlewares=archon-mcp-strip@docker"
       - "traefik.http.routers.archon-mcp-secure.tls=true"
     networks:
@@ -115,20 +92,12 @@ services:
     depends_on:
       - archon-server
       - archon-agents
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          'python -c "import socket; s=socket.socket(); s.connect((''localhost'', ${ARCHON_MCP_PORT:-8051})); s.close()"',
-        ]
+      test: ["CMD", "sh", "-c", "python -c \"import socket; s=socket.socket(); s.connect(('localhost', ${ARCHON_MCP_PORT:-8051})); s.close()\""]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s # Give dependencies time to start
+      start_period: 60s  # Give dependencies time to start
 
   # AI Agents Service (ML/Reranking)
   archon-agents:
@@ -157,26 +126,18 @@ services:
       # HTTP
       - "traefik.http.routers.archon-agents.entrypoints=http"
       - "traefik.http.routers.archon-agents.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/agents`)"
-      - "traefik.http.routers.archon-agents.priority=10"
       - "traefik.http.routers.archon-agents.middlewares=https-redirectscheme@file,archon-agents-strip@docker"
       - "traefik.http.services.archon-agents.loadbalancer.server.port=${ARCHON_AGENTS_PORT:-8052}"
       # HTTPS
       - "traefik.http.routers.archon-agents-secure.entrypoints=https"
       - "traefik.http.routers.archon-agents-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/agents`)"
-      - "traefik.http.routers.archon-agents-secure.priority=10"
       - "traefik.http.routers.archon-agents-secure.middlewares=archon-agents-strip@docker"
       - "traefik.http.routers.archon-agents-secure.tls=true"
     networks:
       - app-network
       - traefik-uds
     healthcheck:
-      test:
-        [
-          "CMD",
-          "sh",
-          "-c",
-          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:${ARCHON_AGENTS_PORT:-8052}/health'')"',
-        ]
+      test: ["CMD", "sh", "-c", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:${ARCHON_AGENTS_PORT:-8052}/health')\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -194,22 +155,17 @@ services:
       - HOST=${HOST:-localhost}
       - VITE_HMR_HOST=localhost
       - VITE_HOST_CHECK=false
-      - VITE_ORIGIN=https://archon.uds.tophermayor.com
-      - HMR_HOST=archon.uds.tophermayor.com
-      - DOCKER_ENV=true
     labels:
       - "traefik.enable=true"
       - "traefik.uds-label=true"
       # HTTP
       - "traefik.http.routers.archon-ui.entrypoints=http"
       - "traefik.http.routers.archon-ui.rule=Host(`archon.uds.tophermayor.com`)"
-      - "traefik.http.routers.archon-ui.priority=1"
       - "traefik.http.routers.archon-ui.middlewares=https-redirectscheme@file"
       - "traefik.http.services.archon-ui.loadbalancer.server.port=5173"
       # HTTPS
       - "traefik.http.routers.archon-ui-secure.entrypoints=https"
       - "traefik.http.routers.archon-ui-secure.rule=Host(`archon.uds.tophermayor.com`)"
-      - "traefik.http.routers.archon-ui-secure.priority=1"
       - "traefik.http.routers.archon-ui-secure.tls=true"
     networks:
       - app-network
