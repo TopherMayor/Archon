@@ -95,19 +95,17 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.uds-label=true"
-      # Middleware to strip /mcp so backend sees root paths
-      - "traefik.http.middlewares.archon-mcp-strip.stripPrefix.prefixes=/mcp"
       # HTTP
       - "traefik.http.routers.archon-mcp.entrypoints=http"
       - "traefik.http.routers.archon-mcp.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp`)"
       - "traefik.http.routers.archon-mcp.priority=10"
-      - "traefik.http.routers.archon-mcp.middlewares=https-redirectscheme@file,archon-mcp-strip@docker"
+      - "traefik.http.routers.archon-mcp.middlewares=https-redirectscheme@file"
       - "traefik.http.services.archon-mcp.loadbalancer.server.port=${ARCHON_MCP_PORT:-8051}"
       # HTTPS
       - "traefik.http.routers.archon-mcp-secure.entrypoints=https"
       - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp`)"
       - "traefik.http.routers.archon-mcp-secure.priority=10"
-      - "traefik.http.routers.archon-mcp-secure.middlewares=archon-mcp-strip@docker"
+      - "traefik.http.routers.archon-mcp-secure.middlewares="
       - "traefik.http.routers.archon-mcp-secure.tls=true"
     networks:
       - app-network
