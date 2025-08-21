@@ -68,20 +68,21 @@ export const RAGSettings = ({
                 { value: 'openai', label: 'OpenAI' },
                 { value: 'openrouter', label: 'OpenRouter' },
                 { value: 'google', label: 'Google Gemini' },
+                { value: 'qwen', label: 'Qwen' },
                 { value: 'ollama', label: 'Ollama (Coming Soon)' },
               ]}
             />
           </div>
-          {(ragSettings.LLM_PROVIDER === 'ollama' || ragSettings.LLM_PROVIDER === 'openrouter') && (
+          {(ragSettings.LLM_PROVIDER === 'ollama' || ragSettings.LLM_PROVIDER === 'openrouter' || ragSettings.LLM_PROVIDER === 'qwen') && (
             <div>
               <Input
-                label={ragSettings.LLM_PROVIDER === 'ollama' ? "Ollama Base URL" : "OpenRouter Base URL"}
-                value={ragSettings.LLM_BASE_URL || (ragSettings.LLM_PROVIDER === 'ollama' ? 'http://localhost:11434/v1' : 'https://openrouter.ai/api/v1')}
+                label={getBaseUrlLabel(ragSettings.LLM_PROVIDER)}
+                value={ragSettings.LLM_BASE_URL || getBaseUrlDefault(ragSettings.LLM_PROVIDER)}
                 onChange={e => setRagSettings({
                   ...ragSettings,
                   LLM_BASE_URL: e.target.value
                 })}
-                placeholder={ragSettings.LLM_PROVIDER === 'ollama' ? "http://localhost:11434/v1" : "https://openrouter.ai/api/v1"}
+                placeholder={getBaseUrlDefault(ragSettings.LLM_PROVIDER)}
                 accentColor="green"
               />
             </div>
@@ -487,6 +488,8 @@ function getModelPlaceholder(provider: string): string {
       return 'e.g., llama2, mistral';
     case 'google':
       return 'e.g., gemini-1.5-flash';
+    case 'qwen':
+      return 'e.g., qwen3-coder-plus, qwen2.5-72b-instruct';
     default:
       return 'e.g., gpt-4o-mini';
   }
@@ -502,8 +505,36 @@ function getEmbeddingPlaceholder(provider: string): string {
       return 'e.g., nomic-embed-text';
     case 'google':
       return 'e.g., text-embedding-004';
+    case 'qwen':
+      return 'Default: text-embedding-v1';
     default:
       return 'Default: text-embedding-3-small';
+  }
+}
+
+function getBaseUrlLabel(provider: string): string {
+  switch (provider) {
+    case 'ollama':
+      return 'Ollama Base URL';
+    case 'openrouter':
+      return 'OpenRouter Base URL';
+    case 'qwen':
+      return 'Qwen API Endpoint';
+    default:
+      return 'Base URL';
+  }
+}
+
+function getBaseUrlDefault(provider: string): string {
+  switch (provider) {
+    case 'ollama':
+      return 'http://localhost:11434/v1';
+    case 'openrouter':
+      return 'https://openrouter.ai/api/v1';
+    case 'qwen':
+      return 'https://portal.qwen.ai/api/v1';
+    default:
+      return '';
   }
 }
 

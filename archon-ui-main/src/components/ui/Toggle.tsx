@@ -3,7 +3,7 @@ import '../../styles/toggle.css';
 interface ToggleProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
-  accentColor?: 'purple' | 'green' | 'pink' | 'blue' | 'orange';
+  accentColor?: 'purple' | 'green' | 'pink' | 'blue' | 'orange' | 'cyan';
   icon?: React.ReactNode;
   disabled?: boolean;
 }

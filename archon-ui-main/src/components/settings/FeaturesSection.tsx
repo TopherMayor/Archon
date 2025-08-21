@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Moon, Sun, FileText, Layout, Bot, Settings, Palette, Flame, Monitor } from 'lucide-react';
+import { Moon, Sun, FileText, Layout, Bot, Settings, Palette, Flame, Monitor, ScrollText } from 'lucide-react';
 import { Toggle } from '../ui/Toggle';
 import { Card } from '../ui/Card';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { credentialsService } from '../../services/credentialsService';
 import { useToast } from '../../contexts/ToastContext';
 import { serverHealthService } from '../../services/serverHealthService';
@@ -12,6 +13,7 @@ export const FeaturesSection = () => {
     theme,
     setTheme
   } = useTheme();
+  const { showScrollbars, setShowScrollbars } = useSettings();
   const { showToast } = useToast();
   const isDarkMode = theme === 'dark';
   const [projectsEnabled, setProjectsEnabled] = useState(true);
@@ -194,6 +196,19 @@ export const FeaturesSection = () => {
     }
   };
 
+  const handleScrollbarsToggle = async (checked: boolean) => {
+    try {
+      await setShowScrollbars(checked);
+      showToast(
+        checked ? 'Scrollbars Now Visible' : 'Scrollbars Now Hidden', 
+        checked ? 'success' : 'info'
+      );
+    } catch (error) {
+      console.error('Failed to update scrollbar setting:', error);
+      showToast('Failed to update scrollbar setting', 'error');
+    }
+  };
+
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -313,6 +328,30 @@ export const FeaturesSection = () => {
               />
             </div>
           </div>
+
+          {/* Show Scrollbars Toggle */}
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-cyan-500/15 to-cyan-600/10 backdrop-blur-sm border border-cyan-500/30 shadow-lg">
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-800 dark:text-white">
+                Show Horizontal Scrollbars
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Display horizontal scrollbars for better mouse navigation
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <Toggle 
+                checked={showScrollbars} 
+                onCheckedChange={handleScrollbarsToggle} 
+                accentColor="cyan" 
+                icon={<ScrollText className="w-5 h-5" />}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {/* Spacer div to balance the grid layout */}
+          <div className="hidden"></div>
         </div>
     </>
   );

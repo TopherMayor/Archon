@@ -5,6 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useStaggeredEntrance } from '../hooks/useStaggeredEntrance';
 import { useToast } from '../contexts/ToastContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { mcpServerService, ServerStatus, LogEntry, ServerConfig } from '../services/mcpServerService';
 import { IDEGlobalRules } from '../components/settings/IDEGlobalRules';
 // import { MCPClients } from '../components/mcp/MCPClients'; // Commented out - feature not implemented
@@ -37,6 +38,7 @@ type SupportedIDE = 'windsurf' | 'cursor' | 'claudecode' | 'cline' | 'kiro' | 'a
  * @component
  */
 export const MCPPage = () => {
+  const { showScrollbars } = useSettings();
   const [serverStatus, setServerStatus] = useState<ServerStatus>({
     status: 'stopped',
     uptime: null,
@@ -716,7 +718,9 @@ export const MCPPage = () => {
                 <div 
                   id="mcp-logs-container"
                   ref={logsContainerRef}
-                  className="bg-gray-50 dark:bg-black border border-gray-200 dark:border-zinc-900 rounded-md p-4 flex-1 overflow-y-auto font-mono text-sm max-h-[600px]"
+                  className={`bg-gray-50 dark:bg-black border border-gray-200 dark:border-zinc-900 rounded-md p-4 flex-1 font-mono text-sm max-h-[600px] ${
+                    showScrollbars ? 'overflow-y-auto custom-scrollbar' : 'overflow-y-auto scrollbar-hidden'
+                  }`}
                 >
                   {logs.length === 0 ? (
                     <p className="text-gray-500 dark:text-zinc-500 text-center py-8">
