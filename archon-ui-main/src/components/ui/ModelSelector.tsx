@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Star, Gift, Zap, DollarSign } from 'lucide-react';
-import { ModelDirectory, ModelInfo } from '../../services/modelDirectory';
+import { ChevronDown, Search, Star, Gift, Zap, DollarSign, RefreshCw } from 'lucide-react';
+import { dynamicModelService, DynamicModelInfo } from '../../services/dynamicModelService';
 
 interface ModelSelectorProps {
   label: string;
@@ -24,14 +24,50 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [filteredModels, setFilteredModels] = useState<DynamicModelInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get filtered models based on search and provider
-  const filteredModels = ModelDirectory.searchModels(searchQuery, type, provider);
+  // Fetch models when dropdown opens or provider changes
+  useEffect(() => {
+    if (isOpen && provider) {
+      fetchModels();
+    }
+  }, [isOpen, provider, type]);
+
+  const fetchModels = async (forceRefresh = false) => {
+    if (!provider) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const models = await dynamicModelService.searchModels(searchQuery, type, provider);
+      setFilteredModels(models);
+    } catch (err) {
+      console.error('Failed to fetch models:', err);
+      setError('Failed to load models');
+      setFilteredModels([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update filtered models when search query changes
+  useEffect(() => {
+    if (isOpen && provider) {
+      const timeoutId = setTimeout(() => {
+        fetchModels();
+      }, 300); // Debounce search
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchQuery]);
   
   // Find current model info
-  const currentModel = ModelDirectory.getModelById(value, type);
+  const currentModel = filteredModels.find(m => m.id === value);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -88,9 +124,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   };
 
-  const handleModelSelect = (model: ModelInfo) => {
+  const handleModelSelect = (model: DynamicModelInfo) => {
     onChange(model.id);
     setIsOpen(false);
+  };
+
+  const handleRefresh = async () => {
+    await fetchModels(true);
   };
 
   const getDisplayValue = () => {
@@ -100,7 +140,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return value || placeholder || `Select ${type} model...`;
   };
 
-  const getPriceDisplay = (model: ModelInfo) => {
+  const getPriceDisplay = (model: DynamicModelInfo) => {
     if (model.isFree) return null;
     if (!model.pricing) return null;
     
@@ -164,17 +204,43 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={`Search ${type} models...`}
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 
+                className="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 
                   rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white
                   focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 autoFocus
               />
+              <button
+                onClick={handleRefresh}
+                className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                title="Refresh models"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
             </div>
           </div>
 
           {/* Model List */}
           <div className="max-h-64 overflow-y-auto">
-            {filteredModels.length === 0 ? (
+            {loading ? (
+              <div className="p-4 text-center">
+                <div className="flex items-center justify-center space-x-2 text-gray-500 dark:text-gray-400">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading models...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="p-4 text-center">
+                <div className="text-sm text-red-600 dark:text-red-400 mb-2">
+                  {error}
+                </div>
+                <button
+                  onClick={handleRefresh}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : filteredModels.length === 0 ? (
               <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
                 No models found
               </div>
@@ -245,11 +311,16 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             )}
           </div>
 
-          {/* Footer with free model count */}
+          {/* Footer with model count and status */}
           <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
             <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-              {ModelDirectory.getFreeModels(type).filter(m => !provider || m.provider === provider).length} free models available
-              {provider ? ` for ${provider}` : ''}
+              {loading ? 'Loading...' : 
+                `${filteredModels.length} models available${provider ? ` for ${provider}` : ''}`}
+              {filteredModels.length > 0 && (
+                <span className="ml-2">
+                  • {filteredModels.filter(m => m.isFree).length} free
+                </span>
+              )}
             </div>
           </div>
         </div>
