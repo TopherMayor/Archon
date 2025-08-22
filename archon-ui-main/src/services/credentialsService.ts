@@ -23,6 +23,12 @@ export interface RagSettings {
   OLLAMA_EMBEDDING_URL?: string;
   OLLAMA_EMBEDDING_INSTANCE_NAME?: string;
   EMBEDDING_MODEL?: string;
+  // Multi-provider settings
+  USE_SEPARATE_PROVIDERS?: boolean;
+  CHAT_PROVIDER?: string;
+  CHAT_BASE_URL?: string;
+  EMBEDDING_PROVIDER?: string;
+  EMBEDDING_BASE_URL?: string;
   // Crawling Performance Settings
   CRAWL_BATCH_SIZE?: number;
   CRAWL_MAX_CONCURRENT?: number;
@@ -191,6 +197,12 @@ class CredentialsService {
       OLLAMA_EMBEDDING_URL: "",
       OLLAMA_EMBEDDING_INSTANCE_NAME: "",
       EMBEDDING_MODEL: "",
+      // Multi-provider settings defaults
+      USE_SEPARATE_PROVIDERS: false,
+      CHAT_PROVIDER: "openai",
+      CHAT_BASE_URL: "",
+      EMBEDDING_PROVIDER: "openai",
+      EMBEDDING_BASE_URL: "",
       // Crawling Performance Settings defaults
       CRAWL_BATCH_SIZE: 50,
       CRAWL_MAX_CONCURRENT: 10,
@@ -223,6 +235,10 @@ class CredentialsService {
             "OLLAMA_EMBEDDING_INSTANCE_NAME",
             "EMBEDDING_MODEL",
             "CRAWL_WAIT_STRATEGY",
+            "CHAT_PROVIDER",
+            "CHAT_BASE_URL",
+            "EMBEDDING_PROVIDER",
+            "EMBEDDING_BASE_URL",
           ].includes(cred.key)
         ) {
           (settings as any)[cred.key] = cred.value || "";
@@ -251,7 +267,16 @@ class CredentialsService {
           settings[cred.key] = parseFloat(cred.value || "0.5") || 0.5;
         }
         // Boolean fields
-        else {
+        else if (
+          [
+            "USE_CONTEXTUAL_EMBEDDINGS",
+            "USE_HYBRID_SEARCH",
+            "USE_AGENTIC_RAG",
+            "USE_RERANKING",
+            "ENABLE_PARALLEL_BATCHES",
+            "USE_SEPARATE_PROVIDERS",
+          ].includes(cred.key)
+        ) {
           (settings as any)[cred.key] = cred.value === "true";
         }
       }
