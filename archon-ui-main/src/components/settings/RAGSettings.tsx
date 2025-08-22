@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Settings, Check, Save, Loader, ChevronDown, ChevronUp, Zap, Database } from 'lucide-react';
+import { Settings, Check, Save, Loader, ChevronDown, ChevronUp, Zap, Database, Info } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
+import { ModelSelector } from '../ui/ModelSelector';
 import { useToast } from '../../contexts/ToastContext';
 import { credentialsService } from '../../services/credentialsService';
 
@@ -18,6 +19,12 @@ interface RAGSettingsProps {
     LLM_PROVIDER?: string;
     LLM_BASE_URL?: string;
     EMBEDDING_MODEL?: string;
+    // Multi-provider settings
+    USE_SEPARATE_PROVIDERS?: boolean;
+    CHAT_PROVIDER?: string;
+    CHAT_BASE_URL?: string;
+    EMBEDDING_PROVIDER?: string;
+    EMBEDDING_BASE_URL?: string;
     // Crawling Performance Settings
     CRAWL_BATCH_SIZE?: number;
     CRAWL_MAX_CONCURRENT?: number;
@@ -46,96 +53,248 @@ export const RAGSettings = ({
   const [showCrawlingSettings, setShowCrawlingSettings] = useState(false);
   const [showStorageSettings, setShowStorageSettings] = useState(false);
   const { showToast } = useToast();
-  return <Card accentColor="green" className="overflow-hidden p-8">
+  
+  // Determine if we're using separate providers
+  const useSeparateProviders = ragSettings.USE_SEPARATE_PROVIDERS ?? false;
+  
+  // Get current providers for each model
+  const chatProvider = useSeparateProviders ? (ragSettings.CHAT_PROVIDER || 'openai') : (ragSettings.LLM_PROVIDER || 'openai');
+  const embeddingProvider = useSeparateProviders ? (ragSettings.EMBEDDING_PROVIDER || 'openai') : (ragSettings.LLM_PROVIDER || 'openai');
+  return (
+    <Card accentColor="green" className="overflow-hidden p-8">
         {/* Description */}
-        <p className="text-sm text-gray-600 dark:text-zinc-400 mb-6">
-          Configure Retrieval-Augmented Generation (RAG) strategies for optimal
-          knowledge retrieval.
-        </p>
-        
-        {/* Provider Selection Row */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div>
-            <Select
-              label="LLM Provider"
-              value={ragSettings.LLM_PROVIDER || 'openai'}
-              onChange={e => setRagSettings({
-                ...ragSettings,
-                LLM_PROVIDER: e.target.value
-              })}
-              accentColor="green"
-              options={[
-                { value: 'openai', label: 'OpenAI' },
-                { value: 'openrouter', label: 'OpenRouter' },
-                { value: 'google', label: 'Google Gemini' },
-                { value: 'qwen', label: 'Qwen' },
-                { value: 'ollama', label: 'Ollama (Coming Soon)' },
-              ]}
-            />
-          </div>
-          {(ragSettings.LLM_PROVIDER === 'ollama' || ragSettings.LLM_PROVIDER === 'openrouter' || ragSettings.LLM_PROVIDER === 'qwen') && (
-            <div>
-              <Input
-                label={getBaseUrlLabel(ragSettings.LLM_PROVIDER)}
-                value={ragSettings.LLM_BASE_URL || getBaseUrlDefault(ragSettings.LLM_PROVIDER)}
-                onChange={e => setRagSettings({
-                  ...ragSettings,
-                  LLM_BASE_URL: e.target.value
-                })}
-                placeholder={getBaseUrlDefault(ragSettings.LLM_PROVIDER)}
-                accentColor="green"
-              />
+        <div className="mb-6">
+          <p className="text-sm text-gray-600 dark:text-zinc-400 mb-3">
+            Configure Retrieval-Augmented Generation (RAG) strategies for optimal
+            knowledge retrieval.
+          </p>
+          <div className="flex items-start space-x-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>RAG uses two different models:</strong>
+              <ul className="mt-1 ml-4 list-disc space-y-1">
+                <li><strong>Chat Model:</strong> Generates responses and reasoning</li>
+                <li><strong>Embedding Model:</strong> Converts text to vectors for search</li>
+              </ul>
+              <p className="mt-2 text-xs">💡 <strong>Tip:</strong> You can use the same provider for both models or mix providers for cost optimization!</p>
             </div>
-          )}
-          <div className="flex items-end">
-            <Button 
-              variant="outline" 
-              accentColor="green" 
-              icon={saving ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-              className="w-full whitespace-nowrap"
-              size="md"
-              onClick={async () => {
-                try {
-                  setSaving(true);
-                  await credentialsService.updateRagSettings(ragSettings);
-                  showToast('RAG settings saved successfully!', 'success');
-                } catch (err) {
-                  console.error('Failed to save RAG settings:', err);
-                  showToast('Failed to save settings', 'error');
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save Settings'}
-            </Button>
           </div>
         </div>
+        
+        {/* Provider Configuration Mode */}
+        <div className="mb-6">
+          <CustomCheckbox
+            id="separateProviders"
+            checked={useSeparateProviders}
+            onChange={e => setRagSettings({
+              ...ragSettings,
+              USE_SEPARATE_PROVIDERS: e.target.checked,
+              // Reset provider-specific settings when switching modes
+              ...(e.target.checked ? {
+                CHAT_PROVIDER: ragSettings.LLM_PROVIDER || 'openai',
+                EMBEDDING_PROVIDER: ragSettings.LLM_PROVIDER || 'openai',
+                CHAT_BASE_URL: ragSettings.LLM_BASE_URL || '',
+                EMBEDDING_BASE_URL: ragSettings.LLM_BASE_URL || ''
+              } : {
+                LLM_PROVIDER: ragSettings.CHAT_PROVIDER || ragSettings.LLM_PROVIDER || 'openai',
+                LLM_BASE_URL: ragSettings.CHAT_BASE_URL || ragSettings.LLM_BASE_URL || ''
+              })
+            })}
+            label="Use Separate Providers"
+            description="Enable to use different LLM providers for chat and embedding models"
+          />
+        </div>
+        
+        {/* Provider Selection */}
+        {!useSeparateProviders ? (
+          // Single Provider Mode
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <Select
+                label="LLM Provider (Both Models)"
+                value={ragSettings.LLM_PROVIDER || 'openai'}
+                onChange={e => setRagSettings({
+                  ...ragSettings,
+                  LLM_PROVIDER: e.target.value
+                })}
+                accentColor="green"
+                options={[
+                  { value: 'openai', label: 'OpenAI' },
+                  { value: 'openrouter', label: 'OpenRouter (🎁 Free models available)' },
+                  { value: 'google', label: 'Google Gemini' },
+                  { value: 'qwen', label: 'Qwen' },
+                  { value: 'ollama', label: 'Ollama (💻 Local & Free)' },
+                ]}
+              />
+            </div>
+            {(ragSettings.LLM_PROVIDER === 'ollama' || ragSettings.LLM_PROVIDER === 'openrouter' || ragSettings.LLM_PROVIDER === 'qwen') && (
+              <div>
+                <Input
+                  label={getBaseUrlLabel(ragSettings.LLM_PROVIDER)}
+                  value={ragSettings.LLM_BASE_URL || getBaseUrlDefault(ragSettings.LLM_PROVIDER)}
+                  onChange={e => setRagSettings({
+                    ...ragSettings,
+                    LLM_BASE_URL: e.target.value
+                  })}
+                  placeholder={getBaseUrlDefault(ragSettings.LLM_PROVIDER)}
+                  accentColor="green"
+                />
+              </div>
+            )}
+            <div className="flex items-end">
+              <Button 
+                variant="outline" 
+                accentColor="green" 
+                icon={saving ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                className="w-full whitespace-nowrap"
+                size="md"
+                onClick={async () => {
+                  try {
+                    setSaving(true);
+                    await credentialsService.updateRagSettings(ragSettings);
+                    showToast('RAG settings saved successfully!', 'success');
+                  } catch (err) {
+                    console.error('Failed to save RAG settings:', err);
+                    showToast('Failed to save settings', 'error');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Settings'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          // Separate Providers Mode
+          <div className="space-y-4 mb-4">
+            {/* Chat Model Provider Row */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Select
+                  label="Chat Model Provider"
+                  value={ragSettings.CHAT_PROVIDER || 'openai'}
+                  onChange={e => setRagSettings({
+                    ...ragSettings,
+                    CHAT_PROVIDER: e.target.value
+                  })}
+                  accentColor="green"
+                  options={[
+                    { value: 'openai', label: 'OpenAI' },
+                    { value: 'openrouter', label: 'OpenRouter (🎁 Free models available)' },
+                    { value: 'google', label: 'Google Gemini' },
+                    { value: 'qwen', label: 'Qwen' },
+                    { value: 'ollama', label: 'Ollama (💻 Local & Free)' },
+                  ]}
+                />
+              </div>
+              {(chatProvider === 'ollama' || chatProvider === 'openrouter' || chatProvider === 'qwen') && (
+                <div>
+                  <Input
+                    label={getBaseUrlLabel(chatProvider) + ' (Chat)'}
+                    value={ragSettings.CHAT_BASE_URL || getBaseUrlDefault(chatProvider)}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      CHAT_BASE_URL: e.target.value
+                    })}
+                    placeholder={getBaseUrlDefault(chatProvider)}
+                    accentColor="green"
+                  />
+                </div>
+              )}
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  accentColor="green" 
+                  icon={saving ? <Loader className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                  className="w-full whitespace-nowrap"
+                  size="md"
+                  onClick={async () => {
+                    try {
+                      setSaving(true);
+                      await credentialsService.updateRagSettings(ragSettings);
+                      showToast('RAG settings saved successfully!', 'success');
+                    } catch (err) {
+                      console.error('Failed to save RAG settings:', err);
+                      showToast('Failed to save settings', 'error');
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Settings'}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Embedding Model Provider Row */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Select
+                  label="Embedding Model Provider"
+                  value={ragSettings.EMBEDDING_PROVIDER || 'openai'}
+                  onChange={e => setRagSettings({
+                    ...ragSettings,
+                    EMBEDDING_PROVIDER: e.target.value
+                  })}
+                  accentColor="green"
+                  options={[
+                    { value: 'openai', label: 'OpenAI' },
+                    { value: 'openrouter', label: 'OpenRouter (🎁 Free models available)' },
+                    { value: 'google', label: 'Google Gemini' },
+                    { value: 'qwen', label: 'Qwen' },
+                    { value: 'ollama', label: 'Ollama (💻 Local & Free)' },
+                  ]}
+                />
+              </div>
+              {(embeddingProvider === 'ollama' || embeddingProvider === 'openrouter' || embeddingProvider === 'qwen') && (
+                <div>
+                  <Input
+                    label={getBaseUrlLabel(embeddingProvider) + ' (Embedding)'}
+                    value={ragSettings.EMBEDDING_BASE_URL || getBaseUrlDefault(embeddingProvider)}
+                    onChange={e => setRagSettings({
+                      ...ragSettings,
+                      EMBEDDING_BASE_URL: e.target.value
+                    })}
+                    placeholder={getBaseUrlDefault(embeddingProvider)}
+                    accentColor="green"
+                  />
+                </div>
+              )}
+              <div /> {/* Empty space for alignment */}
+            </div>
+          </div>
+        )}
 
         {/* Model Settings Row */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
-            <Input 
-              label="Chat Model" 
-              value={ragSettings.MODEL_CHOICE} 
-              onChange={e => setRagSettings({
+            <ModelSelector
+              label="Chat Model"
+              value={ragSettings.MODEL_CHOICE}
+              onChange={(modelId) => setRagSettings({
                 ...ragSettings,
-                MODEL_CHOICE: e.target.value
-              })} 
-              placeholder={getModelPlaceholder(ragSettings.LLM_PROVIDER || 'openai')}
-              accentColor="green" 
+                MODEL_CHOICE: modelId
+              })}
+              type="chat"
+              provider={chatProvider}
+              placeholder={getModelPlaceholder(chatProvider)}
+              accentColor="green"
             />
           </div>
           <div>
-            <Input
+            <ModelSelector
               label="Embedding Model"
               value={ragSettings.EMBEDDING_MODEL || ''}
-              onChange={e => setRagSettings({
+              onChange={(modelId) => setRagSettings({
                 ...ragSettings,
-                EMBEDDING_MODEL: e.target.value
+                EMBEDDING_MODEL: modelId
               })}
-              placeholder={getEmbeddingPlaceholder(ragSettings.LLM_PROVIDER || 'openai')}
+              type="embedding"
+              provider={embeddingProvider}
+              placeholder={getEmbeddingPlaceholder(embeddingProvider)}
               accentColor="green"
             />
           </div>
@@ -474,7 +633,8 @@ export const RAGSettings = ({
             </div>
           )}
         </div>
-    </Card>;
+    </Card>
+  );
 };
 
 // Helper functions for model placeholders
