@@ -41,6 +41,14 @@ export const IDEGlobalRules = () => {
 
 ## Project Scenarios & Initialization
 
+### CRITICAL: Project Creation Guidelines
+**ALWAYS check for existing projects before creating new ones:**
+1. Run \`archon:manage_project(action="list")\` first
+2. Look for projects with similar titles or GitHub repositories
+3. Use unique, descriptive titles that reflect project purpose
+4. Follow "one project per GitHub repository" rule
+5. If duplicate found, use existing project or create with distinct purpose
+
 ### Scenario 1: New Project with Archon
 
 \`\`\`bash
@@ -376,7 +384,16 @@ archon:manage_task(
 - Update all actions to Archon
 - Move tasks from "todo" → "doing" → "review" (not directly to complete)
 - Maintain task descriptions and add implementation notes
-- DO NOT MAKE ASSUMPTIONS - check project documentation for questions`;
+- DO NOT MAKE ASSUMPTIONS - check project documentation for questions
+
+## Project Creation Guidelines
+
+**CRITICAL: Always check for existing projects before creating new ones:**
+1. List existing projects first
+2. Look for similar titles or GitHub repositories
+3. Use unique, descriptive project titles
+4. Follow "one project per repository" rule
+5. If duplicate found, use existing project instead`;
 
   const currentRules = selectedRuleType === 'claude' ? claudeRules : universalRules;
 

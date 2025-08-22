@@ -74,6 +74,42 @@ def register_project_tools(mcp: FastMCP):
             api_url = get_api_url()
             timeout = get_default_timeout()
 
+            # First, check for existing projects to prevent duplicates
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                # Get existing projects
+                list_response = await client.get(urljoin(api_url, "/api/projects"))
+                if list_response.status_code == 200:
+                    existing_projects = list_response.json()
+                    
+                    # Check for duplicate titles
+                    for project in existing_projects:
+                        if project.get("title", "").lower() == title.lower():
+                            return json.dumps({
+                                "success": False,
+                                "error": "duplicate_project",
+                                "message": f"A project with title '{title}' already exists",
+                                "existing_project": {
+                                    "id": project["id"],
+                                    "title": project["title"],
+                                    "github_repo": project.get("github_repo")
+                                },
+                                "suggestion": "Use a different title or update the existing project"
+                            })
+                        
+                        # Check for duplicate GitHub repositories
+                        if github_repo and project.get("github_repo") == github_repo:
+                            return json.dumps({
+                                "success": False,
+                                "error": "duplicate_repository",
+                                "message": f"A project already exists for repository '{github_repo}'",
+                                "existing_project": {
+                                    "id": project["id"],
+                                    "title": project["title"],
+                                    "github_repo": project["github_repo"]
+                                },
+                                "suggestion": "Use a different repository or update the existing project"
+                            })
+
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.post(
                     urljoin(api_url, "/api/projects"),

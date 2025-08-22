@@ -221,6 +221,12 @@ MCP_INSTRUCTIONS = """
 
 ## 🏗️ Project Management
 
+### Project Creation Best Practices
+1. **Check for existing projects**: ALWAYS run `list_projects()` before creating new projects
+2. **Avoid duplicates**: Look for projects with similar titles or GitHub repositories
+3. **Use descriptive titles**: Create unique, clear project titles that reflect their purpose
+4. **Single repository rule**: One project per GitHub repository
+
 ### Project Functions
 - `create_project(title, description, github_repo=None)`
 - `list_projects()`
