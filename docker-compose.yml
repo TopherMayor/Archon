@@ -25,24 +25,24 @@ services:
       - "traefik.uds-label=true"
       # HTTP
       - "traefik.http.routers.archon-api.entrypoints=http"
-      - "traefik.http.routers.archon-api.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.archon-api.rule=Host(`archon-api.uds.tophermayor.com`)"
       - "traefik.http.routers.archon-api.priority=10"
       - "traefik.http.routers.archon-api.middlewares=https-redirectscheme@file"
       - "traefik.http.services.archon-api.loadbalancer.server.port=${ARCHON_SERVER_PORT:-8181}"
       # HTTPS
       - "traefik.http.routers.archon-api-secure.entrypoints=https"
-      - "traefik.http.routers.archon-api-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.archon-api-secure.rule=Host(`archon-api.uds.tophermayor.com`)"
       - "traefik.http.routers.archon-api-secure.priority=10"
       - "traefik.http.routers.archon-api-secure.tls=true"
       # Socket.IO WebSocket support
       - "traefik.http.routers.archon-socketio.entrypoints=http"
-      - "traefik.http.routers.archon-socketio.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/socket.io`)"
+      - "traefik.http.routers.archon-socketio.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/socket.io`)"
       - "traefik.http.routers.archon-socketio.priority=20"
       - "traefik.http.routers.archon-socketio.middlewares=https-redirectscheme@file"
       - "traefik.http.routers.archon-socketio.service=archon-api"
       # Socket.IO HTTPS
       - "traefik.http.routers.archon-socketio-secure.entrypoints=https"
-      - "traefik.http.routers.archon-socketio-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/socket.io`)"
+      - "traefik.http.routers.archon-socketio-secure.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/socket.io`)"
       - "traefik.http.routers.archon-socketio-secure.priority=20"
       - "traefik.http.routers.archon-socketio-secure.tls=true"
       - "traefik.http.routers.archon-socketio-secure.service=archon-api"
@@ -109,7 +109,7 @@ services:
       - "traefik.uds-label=true"
       # HTTP
       - "traefik.http.routers.archon-mcp.entrypoints=http"
-      - "traefik.http.routers.archon-mcp.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
+      - "traefik.http.routers.archon-mcp.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
       - "traefik.http.routers.archon-mcp.priority=10"
       - "traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.regex=^/mcp-stream(.*)"
       - "traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.replacement=/mcp$1"
@@ -117,7 +117,7 @@ services:
       - "traefik.http.services.archon-mcp.loadbalancer.server.port=${ARCHON_MCP_PORT:-8051}"
       # HTTPS
       - "traefik.http.routers.archon-mcp-secure.entrypoints=https"
-      - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
+      - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
       - "traefik.http.routers.archon-mcp-secure.priority=10"
       - "traefik.http.routers.archon-mcp-secure.middlewares=archon-mcp-rewrite@docker"
       - "traefik.http.routers.archon-mcp-secure.tls=true"
@@ -168,13 +168,13 @@ services:
       - "traefik.http.middlewares.archon-agents-strip.stripPrefix.prefixes=/agents"
       # HTTP
       - "traefik.http.routers.archon-agents.entrypoints=http"
-      - "traefik.http.routers.archon-agents.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/agents`)"
+      - "traefik.http.routers.archon-agents.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/agents`)"
       - "traefik.http.routers.archon-agents.priority=10"
       - "traefik.http.routers.archon-agents.middlewares=https-redirectscheme@file,archon-agents-strip@docker"
       - "traefik.http.services.archon-agents.loadbalancer.server.port=${ARCHON_AGENTS_PORT:-8052}"
       # HTTPS
       - "traefik.http.routers.archon-agents-secure.entrypoints=https"
-      - "traefik.http.routers.archon-agents-secure.rule=Host(`archon.uds.tophermayor.com`) && PathPrefix(`/agents`)"
+      - "traefik.http.routers.archon-agents-secure.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/agents`)"
       - "traefik.http.routers.archon-agents-secure.priority=10"
       - "traefik.http.routers.archon-agents-secure.middlewares=archon-agents-strip@docker"
       - "traefik.http.routers.archon-agents-secure.tls=true"
@@ -200,8 +200,9 @@ services:
     container_name: Archon-UI
     ports:
       - "${ARCHON_UI_PORT:-3737}:5173"
+      - "24678:24678"  # HMR WebSocket port
     environment:
-      - VITE_API_URL=https://archon.uds.tophermayor.com
+      - VITE_API_URL=https://archon-api.uds.tophermayor.com
       - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
       - HOST=0.0.0.0
       - VITE_HMR_HOST=localhost

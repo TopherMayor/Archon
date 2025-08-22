@@ -282,12 +282,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       strictPort: false, // Don't exit if port is in use, try next port
       cors: true, // Enable CORS for cross-origin requests
       origin: process.env.VITE_ORIGIN || 'https://archon.uds.tophermayor.com', // Set origin for host header validation
-      hmr: {
-        protocol: 'wss',
-        host: process.env.HMR_HOST || 'archon.uds.tophermayor.com',
-        port: 443,
-        clientPort: 443,
-      },
+      hmr: false, // Disable HMR to avoid WebSocket issues with external devices
       proxy: {
         '/api': {
           target: `http://${host}:${port}`,
