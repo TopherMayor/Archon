@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Star, Gift, Zap, DollarSign, RefreshCw } from 'lucide-react';
+import { ChevronDown, Search, Star, Gift, RefreshCw } from 'lucide-react';
 import { dynamicModelService, DynamicModelInfo } from '../../services/dynamicModelService';
 
 interface ModelSelectorProps {
@@ -145,10 +145,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     if (!model.pricing) return null;
     
     const { input, output } = model.pricing;
-    if (output) {
-      return `$${input}/$${output} per 1M tokens`;
+    if (output && input) {
+      return `$${input.toFixed(3)}/${output.toFixed(3)} per 1M tokens`;
     }
-    return `$${input} per 1M tokens`;
+    if (input) {
+      return `$${input.toFixed(3)} per 1M tokens`;
+    }
+    return null;
   };
 
   return (
@@ -280,27 +283,22 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                       <div className="font-medium text-gray-900 dark:text-white mt-1">
                         {model.name}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {model.description}
-                      </div>
-                      {model.contextLength && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Context: {model.contextLength.toLocaleString()} tokens
-                        </div>
-                      )}
                     </div>
                     <div className="ml-3 text-right">
                       <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                         {model.provider}
                       </div>
+                      {model.contextLength && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          Context: {model.contextLength.toLocaleString()} tokens
+                        </div>
+                      )}
                       {model.isFree ? (
-                        <div className="flex items-center text-xs text-green-600 dark:text-green-400">
-                          <Zap className="w-3 h-3 mr-1" />
+                        <div className="flex items-center justify-end text-xs text-green-600 dark:text-green-400">
                           Free
                         </div>
                       ) : (
-                        <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
-                          <DollarSign className="w-3 h-3 mr-1" />
+                        <div className="flex items-center justify-end text-xs text-gray-600 dark:text-gray-400">
                           <span>{getPriceDisplay(model) || 'Paid'}</span>
                         </div>
                       )}

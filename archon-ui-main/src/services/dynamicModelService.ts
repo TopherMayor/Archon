@@ -102,7 +102,7 @@ class DynamicModelService {
             type,
             isFree,
             contextLength: model.context_length,
-            description: model.description || 'Available via OpenRouter',
+            description: this.getShortDescription(model),
             pricing,
             recommended: this.isOpenRouterRecommended(model.id),
             isAvailable: true,
@@ -169,9 +169,9 @@ class DynamicModelService {
 
   private getOpenAIDescription(id: string): string {
     const descriptions: Record<string, string> = {
-      'gpt-4o': 'Latest GPT-4 with multimodal capabilities',
-      'gpt-4o-mini': 'Fast, cost-effective model with strong reasoning',
-      'text-embedding-3-small': 'High-quality embeddings with good performance/cost ratio'
+      'gpt-4o': 'Latest GPT-4 model',
+      'gpt-4o-mini': 'Fast, cost-effective model',
+      'text-embedding-3-small': 'High-quality embeddings'
     };
     return descriptions[id] || 'OpenAI model';
   }
@@ -196,6 +196,30 @@ class DynamicModelService {
       'anthropic/claude-3.5-sonnet'
     ];
     return recommended.includes(id);
+  }
+
+  private getShortDescription(model: any): string {
+    // Generate concise descriptions based on model ID and characteristics
+    if (model.id.includes('free')) return 'Free model';
+    if (model.id.includes('llama')) return 'Meta Llama model';
+    if (model.id.includes('claude')) return 'Anthropic Claude model';
+    if (model.id.includes('gpt')) return 'OpenAI GPT model';
+    if (model.id.includes('gemini')) return 'Google Gemini model';
+    if (model.id.includes('mistral')) return 'Mistral AI model';
+    if (model.id.includes('deepseek')) return 'DeepSeek model';
+    if (model.id.includes('qwen')) return 'Alibaba Qwen model';
+    if (model.id.includes('embed')) return 'Embedding model';
+    
+    // Extract key info from longer descriptions
+    if (model.description) {
+      const desc = model.description;
+      if (desc.includes('reasoning')) return 'Reasoning model';
+      if (desc.includes('code')) return 'Code generation model';
+      if (desc.includes('vision')) return 'Vision-language model';
+      if (desc.includes('large')) return 'Large language model';
+    }
+    
+    return 'AI model';
   }
 
   private getFallbackModels(provider: string, type: 'chat' | 'embedding'): DynamicModelInfo[] {
