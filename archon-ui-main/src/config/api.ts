@@ -7,9 +7,12 @@
 
 // Get the API URL from environment or construct it
 export function getApiUrl(): string {
-  // Check if VITE_API_URL is provided (set by docker-compose)
+  // Check if VITE_API_URL or VITE_API_BASE_URL is provided (set by docker-compose)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
+  }
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
   }
 
   // For relative URLs in production (goes through proxy)

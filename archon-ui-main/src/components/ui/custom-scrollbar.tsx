@@ -13,12 +13,16 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [scrollInfo, setScrollInfo] = useState({
     canScrollLeft: false,
     canScrollRight: false,
     scrollPercentage: 0,
     thumbWidth: 30
   });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartScroll = useRef(0);
 
   const updateScrollInfo = () => {
     if (!contentRef.current) return;
@@ -73,9 +77,9 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
   };
 
   const handleTrackClick = (e: React.MouseEvent) => {
-    if (!contentRef.current || !containerRef.current) return;
+    if (!contentRef.current || !trackRef.current || isDragging) return;
     
-    const track = e.currentTarget;
+    const track = trackRef.current;
     const rect = track.getBoundingClientRect();
     const clickPosition = (e.clientX - rect.left) / rect.width;
     
@@ -83,6 +87,60 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
     const maxScroll = element.scrollWidth - element.clientWidth;
     element.scrollTo({ left: maxScroll * clickPosition, behavior: 'smooth' });
   };
+
+  // Handle mouse down on thumb
+  const handleThumbMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!contentRef.current || !trackRef.current) return;
+    
+    setIsDragging(true);
+    dragStartX.current = e.clientX;
+    dragStartScroll.current = contentRef.current.scrollLeft;
+  };
+
+  // Handle mouse move for dragging
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging || !contentRef.current || !trackRef.current) return;
+    
+    const track = trackRef.current;
+    const rect = track.getBoundingClientRect();
+    const element = contentRef.current;
+    
+    // Calculate position delta
+    const deltaX = e.clientX - dragStartX.current;
+    const trackWidth = rect.width;
+    
+    // Calculate scroll delta based on thumb movement ratio
+    const scrollRange = element.scrollWidth - element.clientWidth;
+    const scrollDelta = (deltaX / trackWidth) * scrollRange;
+    
+    // Apply scroll position directly without animation for immediate response
+    element.scrollLeft = dragStartScroll.current + scrollDelta;
+  };
+
+  // Handle mouse up to stop dragging
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add global event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'grabbing';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isDragging]);
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -122,6 +180,7 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
               
               {/* Scrollable track area */}
               <div 
+                ref={trackRef}
                 className="flex-1 relative h-full cursor-pointer px-2"
                 onClick={handleTrackClick}
               >
@@ -138,11 +197,12 @@ export const CustomScrollbar: React.FC<CustomScrollbarProps> = ({
                     }}
                   />
                   <div
-                    className="absolute top-0.5 bottom-0.5 bg-gradient-to-r from-cyan-400/80 to-cyan-500/90 hover:from-cyan-400/90 hover:to-cyan-500/100 rounded-full transition-all duration-200 min-w-4 shadow-[0_0_6px_rgba(6,182,212,0.5)] hover:shadow-[0_0_10px_rgba(6,182,212,0.7)] border border-cyan-300/30 dark:border-cyan-400/30"
+                    className="absolute top-0.5 bottom-0.5 bg-gradient-to-r from-cyan-400/80 to-cyan-500/90 hover:from-cyan-400/90 hover:to-cyan-500/100 rounded-full transition-all duration-200 min-w-4 shadow-[0_0_6px_rgba(6,182,212,0.5)] hover:shadow-[0_0_10px_rgba(6,182,212,0.7)] border border-cyan-300/30 dark:border-cyan-400/30 cursor-grab active:cursor-grabbing"
                     style={{
                       left: `${scrollInfo.scrollPercentage * (100 - scrollInfo.thumbWidth)}%`,
                       width: `${scrollInfo.thumbWidth}%`
                     }}
+                    onMouseDown={handleThumbMouseDown}
                   />
                 </div>
               </div>
