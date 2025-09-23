@@ -61,6 +61,11 @@ from src.server.services.mcp_service_client import get_mcp_service_client
 
 # Import session management
 from src.server.services.mcp_session_manager import get_session_manager
+# Optional: MCP client registry (scaffolded) for lifecycle tracking
+try:
+    from src.server.services.mcp_client_registry import MCPClientRegistry  # type: ignore
+except Exception:  # pragma: no cover - registry may not be wired yet
+    MCPClientRegistry = None  # type: ignore
 
 # Global initialization lock and flag
 _initialization_lock = threading.Lock()
@@ -96,11 +101,91 @@ class ArchonContext:
             self.health_status = {
                 "status": "healthy",
                 "api_service": False,
-                "agents_service": False,
-                "last_health_check": None,
             }
         if self.startup_time is None:
             self.startup_time = time.time()
+
+
+# --- MCP Client lifecycle helpers -------------------------------------------------
+_registry_instance = None
+
+
+def _get_registry():
+    """Best-effort getter for the MCPClientRegistry.
+
+    NOTE: The registry scaffold requires a DB adapter which may not be wired yet.
+    We guard calls and log debug if unavailable.
+    """
+    global _registry_instance
+    if _registry_instance is not None:
+        return _registry_instance
+    if MCPClientRegistry is None:
+        return None
+    try:
+        # TODO: Inject real DB connection/pool if available
+        _registry_instance = MCPClientRegistry(db=None)  # type: ignore
+    except Exception:  # pragma: no cover
+        _registry_instance = None
+    return _registry_instance
+
+
+def _extract_agent_name(ctx: Context) -> str:
+    """Extract agent name from incoming request headers.
+
+    Looks for 'X-Agent-Name' (case-insensitive). Falls back to 'Unnamed Agent'.
+    """
+    try:
+        # Fast path: starlette-style headers dict
+        headers = {}
+        rc = getattr(ctx, "request_context", None)
+        if rc is None:
+            return "Unnamed Agent"
+
+        # Try attribute 'headers'
+        h = getattr(rc, "headers", None)
+        if isinstance(h, dict):
+            headers = {k.lower(): v for k, v in h.items()}
+        else:
+            # Try ASGI scope headers list of (name,value) bytes
+            scope = getattr(rc, "scope", None)
+            raw = getattr(scope, "get", lambda *_: None)("headers") if scope else None
+            if raw:
+                try:
+                    for k, v in raw:
+                        headers[k.decode("latin-1").lower()] = v.decode("latin-1")
+                except Exception:
+                    pass
+
+        # Socket.IO style environ variable name if proxied
+        if not headers and hasattr(rc, "environ"):
+            env = getattr(rc, "environ")  # type: ignore
+            if isinstance(env, dict):
+                for k, v in env.items():
+                    if isinstance(k, str) and k.upper().startswith("HTTP_"):
+                        headers[k[5:].replace("_", "-").lower()] = v
+
+        return headers.get("x-agent-name") or headers.get("http_x_agent_name") or "Unnamed Agent"
+    except Exception:
+        return "Unnamed Agent"
+
+
+async def _record_client_activity(ctx: Context) -> None:
+    """Best-effort: mark client as connected/active in registry.
+
+    This updates last_seen and status=connected for the agent if registry is wired.
+    """
+    agent_name = _extract_agent_name(ctx)
+    if not agent_name or agent_name == "Unnamed Agent":
+        return
+    registry = _get_registry()
+    if not registry:
+        return
+    try:
+        # Version/capabilities are optional at this stage
+        await registry.mark_connected(agent_name)
+    except Exception:
+        # Registry not yet wired (NotImplemented), ignore silently
+        pass
 
 
 async def perform_health_checks(context: ArchonContext):
@@ -335,6 +420,11 @@ except Exception as e:
 # Health check endpoint
 @mcp.tool()
 async def health_check(ctx: Context) -> str:
+    # Update lifecycle (best-effort): mark client activity
+    try:
+        await _record_client_activity(ctx)
+    except Exception:
+        pass
     """
     Check health status of MCP server and dependencies.
 
@@ -384,6 +474,11 @@ async def health_check(ctx: Context) -> str:
 # Session management endpoint
 @mcp.tool()
 async def session_info(ctx: Context) -> str:
+    # Update lifecycle (best-effort): mark client activity
+    try:
+        await _record_client_activity(ctx)
+    except Exception:
+        pass
     """
     Get current and active session information.
 

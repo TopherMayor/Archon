@@ -805,6 +805,7 @@ class UpdateTaskRequest(BaseModel):
     description: str | None = None
     status: str | None = None
     assignee: str | None = None
+    assignee_type: str | None = None
     agent_name: str | None = None
     task_order: int | None = None
     priority: str | None = None
@@ -853,6 +854,8 @@ async def update_task(task_id: str, request: UpdateTaskRequest):
             update_fields["status"] = request.status
         if request.assignee is not None:
             update_fields["assignee"] = request.assignee
+        if request.assignee_type is not None:
+            update_fields["assignee_type"] = request.assignee_type
         if request.agent_name is not None:
             update_fields["agent_name"] = request.agent_name
         if request.task_order is not None:
