@@ -12,6 +12,18 @@ interface McpConfigSectionProps {
   className?: string;
 }
 
+// Helper function to build the correct MCP URL
+const buildMcpUrl = (config: McpServerConfig): string => {
+  // Use HTTPS for port 443, HTTP for other ports
+  const protocol = config.port === 443 ? 'https' : 'http';
+  // Don't show port for standard ports (80 for HTTP, 443 for HTTPS)
+  const portSuffix = (protocol === 'https' && config.port === 443) || (protocol === 'http' && config.port === 80) 
+    ? '' 
+    : `:${config.port}`;
+  // Use /mcp-stream for the MCP protocol endpoint
+  return `${protocol}://${config.host}${portSuffix}/mcp-stream`;
+};
+
 const ideConfigurations: Record<
   SupportedIDE,
   {
@@ -30,7 +42,7 @@ const ideConfigurations: Record<
         {
           name: "archon",
           transport: "http",
-          url: `http://${config.host}:${config.port}/mcp`,
+          url: buildMcpUrl(config),
         },
         null,
         2,
@@ -49,7 +61,7 @@ const ideConfigurations: Record<
         {
           mcpServers: {
             archon: {
-              httpUrl: `http://${config.host}:${config.port}/mcp`,
+              httpUrl: buildMcpUrl(config),
             },
           },
         },
@@ -67,26 +79,27 @@ const ideConfigurations: Record<
     ],
     configGenerator: (config) => {
       const isWindows = navigator.platform.toLowerCase().includes("win");
+      const mcpUrl = buildMcpUrl(config);
 
       if (isWindows) {
         return `[mcp_servers.archon]
 command = 'node'
 args = [
     'C:/Users/YOUR_USERNAME/AppData/Roaming/npm/node_modules/mcp-remote/dist/proxy.js',
-    'http://${config.host}:${config.port}/mcp'
+    '${mcpUrl}'
 ]
 env = {
-    APPDATA = 'C:\\Users\\YOUR_USERNAME\\AppData\\Roaming',
-    LOCALAPPDATA = 'C:\\Users\\YOUR_USERNAME\\AppData\\Local',
-    SystemRoot = 'C:\\WINDOWS',
-    COMSPEC = 'C:\\WINDOWS\\system32\\cmd.exe'
+    APPDATA = 'C:\\\\Users\\\\YOUR_USERNAME\\\\AppData\\\\Roaming',
+    LOCALAPPDATA = 'C:\\\\Users\\\\YOUR_USERNAME\\\\AppData\\\\Local',
+    SystemRoot = 'C:\\\\WINDOWS',
+    COMSPEC = 'C:\\\\WINDOWS\\\\system32\\\\cmd.exe'
 }`;
       } else {
         return `[mcp_servers.archon]
 command = 'node'
 args = [
     '/usr/local/lib/node_modules/mcp-remote/dist/proxy.js',
-    'http://${config.host}:${config.port}/mcp'
+    '${mcpUrl}'
 ]
 env = { }`;
       }
@@ -106,7 +119,7 @@ env = { }`;
         {
           mcpServers: {
             archon: {
-              url: `http://${config.host}:${config.port}/mcp`,
+              url: buildMcpUrl(config),
             },
           },
         },
@@ -128,7 +141,7 @@ env = { }`;
         {
           mcpServers: {
             archon: {
-              serverUrl: `http://${config.host}:${config.port}/mcp`,
+              serverUrl: buildMcpUrl(config),
             },
           },
         },
@@ -151,7 +164,7 @@ env = { }`;
           mcpServers: {
             archon: {
               command: "npx",
-              args: ["mcp-remote", `http://${config.host}:${config.port}/mcp`, "--allow-http"],
+              args: ["mcp-remote", buildMcpUrl(config), "--allow-http"],
             },
           },
         },
@@ -173,7 +186,7 @@ env = { }`;
           mcpServers: {
             archon: {
               command: "npx",
-              args: ["mcp-remote", `http://${config.host}:${config.port}/mcp`, "--allow-http"],
+              args: ["mcp-remote", buildMcpUrl(config), "--allow-http"],
             },
           },
         },
@@ -216,7 +229,7 @@ export const McpConfigSection: React.FC<McpConfigSectionProps> = ({ config, stat
 
   const handleCursorOneClick = () => {
     const httpConfig = {
-      url: `http://${config.host}:${config.port}/mcp`,
+      url: buildMcpUrl(config),
     };
     const configString = JSON.stringify(httpConfig);
     const base64Config = btoa(configString);
@@ -226,7 +239,7 @@ export const McpConfigSection: React.FC<McpConfigSectionProps> = ({ config, stat
   };
 
   const handleClaudeCodeCommand = async () => {
-    const command = `claude mcp add --transport http archon http://${config.host}:${config.port}/mcp`;
+    const command = `claude mcp add --transport http archon ${buildMcpUrl(config)}`;
     const result = await copyToClipboard(command);
 
     if (result.success) {
@@ -309,7 +322,7 @@ export const McpConfigSection: React.FC<McpConfigSectionProps> = ({ config, stat
               )}
             >
               <code className="text-sm font-mono text-cyan-600 dark:text-cyan-400">
-                claude mcp add --transport http archon http://{config.host}:{config.port}/mcp
+                claude mcp add --transport http archon {buildMcpUrl(config)}
               </code>
               <Button variant="outline" size="sm" onClick={handleClaudeCodeCommand}>
                 <Copy className="w-3 h-3 mr-1" />
