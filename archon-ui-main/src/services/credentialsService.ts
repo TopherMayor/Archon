@@ -23,11 +23,11 @@ export interface RagSettings {
   OLLAMA_EMBEDDING_URL?: string;
   OLLAMA_EMBEDDING_INSTANCE_NAME?: string;
   EMBEDDING_MODEL?: string;
+  EMBEDDING_PROVIDER?: string;
   // Multi-provider settings
   USE_SEPARATE_PROVIDERS?: boolean;
   CHAT_PROVIDER?: string;
   CHAT_BASE_URL?: string;
-  EMBEDDING_PROVIDER?: string;
   EMBEDDING_BASE_URL?: string;
   // Crawling Performance Settings
   CRAWL_BATCH_SIZE?: number;
@@ -80,6 +80,16 @@ import { getApiUrl } from "../config/api";
 
 class CredentialsService {
   private baseUrl = getApiUrl();
+
+  private notifyCredentialUpdate(keys: string[]): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("archon:credentials-updated", { detail: { keys } })
+    );
+  }
 
   private handleCredentialError(error: any, context: string): Error {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -196,12 +206,12 @@ class CredentialsService {
       LLM_INSTANCE_NAME: "",
       OLLAMA_EMBEDDING_URL: "",
       OLLAMA_EMBEDDING_INSTANCE_NAME: "",
+      EMBEDDING_PROVIDER: "openai",
       EMBEDDING_MODEL: "",
       // Multi-provider settings defaults
       USE_SEPARATE_PROVIDERS: false,
       CHAT_PROVIDER: "openai",
       CHAT_BASE_URL: "",
-      EMBEDDING_PROVIDER: "openai",
       EMBEDDING_BASE_URL: "",
       // Crawling Performance Settings defaults
       CRAWL_BATCH_SIZE: 50,
@@ -233,11 +243,11 @@ class CredentialsService {
             "LLM_INSTANCE_NAME",
             "OLLAMA_EMBEDDING_URL",
             "OLLAMA_EMBEDDING_INSTANCE_NAME",
+            "EMBEDDING_PROVIDER",
             "EMBEDDING_MODEL",
             "CRAWL_WAIT_STRATEGY",
             "CHAT_PROVIDER",
             "CHAT_BASE_URL",
-            "EMBEDDING_PROVIDER",
             "EMBEDDING_BASE_URL",
           ].includes(cred.key)
         ) {
@@ -303,7 +313,9 @@ class CredentialsService {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      return response.json();
+      const updated = await response.json();
+      this.notifyCredentialUpdate([credential.key]);
+      return updated;
     } catch (error) {
       throw this.handleCredentialError(
         error,
@@ -327,7 +339,9 @@ class CredentialsService {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      return response.json();
+      const created = await response.json();
+      this.notifyCredentialUpdate([credential.key]);
+      return created;
     } catch (error) {
       throw this.handleCredentialError(
         error,
@@ -346,6 +360,8 @@ class CredentialsService {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
+
+      this.notifyCredentialUpdate([key]);
     } catch (error) {
       throw this.handleCredentialError(error, `Deleting credential '${key}'`);
     }
