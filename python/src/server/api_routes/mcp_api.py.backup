@@ -2,7 +2,7 @@
 MCP API endpoints for Archon
 
 Provides status and configuration endpoints for the MCP service.
-Supports both Docker Compose containers and Docker Swarm services.
+The MCP container is managed by docker-compose, not by this API.
 """
 
 import os
@@ -18,93 +18,8 @@ from ..config.logfire_config import api_logger, safe_set_attribute, safe_span
 router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 
 
-def get_docker_swarm_service_status(service_name: str) -> dict[str, Any]:
-    """Get status of a Docker Swarm service."""
-    docker_client = None
-    try:
-        docker_client = docker.from_env()
-        
-        # Try to find the service
-        try:
-            service = docker_client.services.get(service_name)
-        except NotFound:
-            # Try alternative service names
-            alternative_names = [
-                "archon_archon-mcp",
-                "archon-mcp", 
-                f"archon_{service_name}",
-                service_name
-            ]
-            
-            service = None
-            for alt_name in alternative_names:
-                try:
-                    service = docker_client.services.get(alt_name)
-                    break
-                except NotFound:
-                    continue
-            
-            if service is None:
-                raise NotFound(f"Service {service_name} not found")
-        
-        # Get service tasks to check status
-        tasks = service.tasks()
-        running_tasks = [task for task in tasks if task.get('Status', {}).get('State') == 'running']
-        
-        if running_tasks:
-            status = "running"
-            # Get uptime from the most recent running task
-            try:
-                from datetime import datetime
-                most_recent_task = max(running_tasks, key=lambda t: t.get('CreatedAt', ''))
-                created_at = most_recent_task.get('CreatedAt', '')
-                if created_at:
-                    created_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                    uptime = int((datetime.now(created_time.tzinfo) - created_time).total_seconds())
-                else:
-                    uptime = None
-            except Exception:
-                uptime = None
-        else:
-            status = "stopped"
-            uptime = None
-        
-        return {
-            "status": status,
-            "uptime": uptime,
-            "logs": [],
-            "container_status": status,
-            "service_name": service.name,
-            "replicas": f"{len(running_tasks)}/{len(tasks)}"
-        }
-        
-    except NotFound:
-        return {
-            "status": "not_found",
-            "uptime": None,
-            "logs": [],
-            "container_status": "not_found",
-            "message": f"Docker Swarm service {service_name} not found."
-        }
-    except Exception as e:
-        api_logger.error(f"Failed to get Docker Swarm service status: {str(e)}", exc_info=True)
-        return {
-            "status": "error",
-            "uptime": None,
-            "logs": [],
-            "container_status": "error",
-            "error": str(e)
-        }
-    finally:
-        if docker_client is not None:
-            try:
-                docker_client.close()
-            except Exception:
-                pass
-
-
-def get_docker_compose_container_status() -> dict[str, Any]:
-    """Get status of Docker Compose container (original implementation)."""
+def get_container_status() -> dict[str, Any]:
+    """Get simple MCP container status without Docker management."""
     docker_client = None
     try:
         docker_client = docker.from_env()
@@ -131,7 +46,7 @@ def get_docker_compose_container_status() -> dict[str, Any]:
         return {
             "status": status,
             "uptime": uptime,
-            "logs": [],
+            "logs": [],  # No log streaming anymore
             "container_status": container_status
         }
 
@@ -160,39 +75,16 @@ def get_docker_compose_container_status() -> dict[str, Any]:
                 pass
 
 
-def get_container_status() -> dict[str, Any]:
-    """Get MCP service status, supporting both Docker Compose and Docker Swarm."""
-    
-    # Check service discovery mode
-    service_discovery_mode = os.getenv("SERVICE_DISCOVERY_MODE", "docker_compose").lower()
-    
-    api_logger.debug(f"Using service discovery mode: {service_discovery_mode}")
-    
-    if service_discovery_mode == "docker_swarm":
-        # Try to get MCP service name from environment
-        mcp_service_name = os.getenv("MCP_SERVICE_NAME", "archon_archon-mcp")
-        api_logger.debug(f"Looking for Docker Swarm service: {mcp_service_name}")
-        return get_docker_swarm_service_status(mcp_service_name)
-    else:
-        # Default to Docker Compose mode
-        api_logger.debug("Looking for Docker Compose container: archon-mcp")
-        return get_docker_compose_container_status()
-
-
 @router.get("/status")
 async def get_status():
     """Get MCP server status."""
     with safe_span("api_mcp_status") as span:
         safe_set_attribute(span, "endpoint", "/api/mcp/status")
         safe_set_attribute(span, "method", "GET")
-        
-        # Add service discovery mode to logging
-        service_discovery_mode = os.getenv("SERVICE_DISCOVERY_MODE", "docker_compose")
-        safe_set_attribute(span, "service_discovery_mode", service_discovery_mode)
 
         try:
             status = get_container_status()
-            api_logger.debug(f"MCP server status checked - status={status.get('status')} mode={service_discovery_mode}")
+            api_logger.debug(f"MCP server status checked - status={status.get('status')}")
             safe_set_attribute(span, "status", status.get("status"))
             safe_set_attribute(span, "uptime", status.get("uptime"))
             return status
@@ -212,34 +104,14 @@ async def get_mcp_config():
         try:
             api_logger.info("Getting MCP server configuration")
 
-            # Get MCP configuration with proper external URLs
+            # Get actual MCP port from environment or use default
             mcp_port = int(os.getenv("ARCHON_MCP_PORT", "8051"))
-            
-            # Check if we have an external MCP URL configured
-            external_mcp_url = os.getenv("MCP_EXTERNAL_URL")
-            if external_mcp_url:
-                # Use the configured external URL
-                if not external_mcp_url.endswith('/'):
-                    external_mcp_url += '/'
-                server_url = external_mcp_url + "mcp"
-                # Extract host from URL for backward compatibility
-                from urllib.parse import urlparse
-                parsed = urlparse(external_mcp_url)
-                host = parsed.hostname or "localhost"
-                port = parsed.port or (443 if parsed.scheme == 'https' else 80)
-            else:
-                # Fallback to localhost for local development
-                host = os.getenv("ARCHON_HOST", "localhost")
-                port = mcp_port
-                protocol = "https" if os.getenv("USE_HTTPS", "false").lower() == "true" else "http"
-                server_url = f"{protocol}://{host}:{port}/mcp"
 
-            # Configuration for MCP clients
+            # Configuration for streamable-http mode with actual port
             config = {
-                "host": host,
-                "port": port,
+                "host": os.getenv("ARCHON_HOST", "localhost"),
+                "port": mcp_port,
                 "transport": "streamable-http",
-                "serverUrl": server_url,  # Add the full server URL for clients
             }
 
             # Get only model choice from database (simplified)
@@ -254,11 +126,10 @@ async def get_mcp_config():
                 # Fallback to default model
                 config["model_choice"] = "gpt-4o-mini"
 
-            api_logger.info(f"MCP configuration - serverUrl: {server_url}")
-            safe_set_attribute(span, "host", host)
-            safe_set_attribute(span, "port", port)
+            api_logger.info("MCP configuration (streamable-http mode)")
+            safe_set_attribute(span, "host", config["host"])
+            safe_set_attribute(span, "port", config["port"])
             safe_set_attribute(span, "transport", "streamable-http")
-            safe_set_attribute(span, "server_url", server_url)
             safe_set_attribute(span, "model_choice", config.get("model_choice", "gpt-4o-mini"))
 
             return config

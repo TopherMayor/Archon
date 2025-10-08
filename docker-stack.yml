@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  archon-server:
+    image: archon-archon-server:latest
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${ARCHON_SERVER_PORT:-8181}/api/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == uefi-docker-server
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.archon-api.entrypoints=web
+        - traefik.http.routers.archon-api.rule=Host(`archon-api.local.tophermayor.com`)
+        - traefik.http.routers.archon-api.priority=10
+        - traefik.http.services.archon-api.loadbalancer.server.port=${ARCHON_SERVER_PORT:-8181}
+        - traefik.http.services.archon-api.loadbalancer.passhostheader=true
+        - traefik.http.routers.archon-api-secure.entrypoints=websecure
+        - traefik.http.routers.archon-api-secure.rule=Host(`archon-api.local.tophermayor.com`)
+        - traefik.http.routers.archon-api-secure.priority=10
+        - traefik.http.routers.archon-api-secure.tls=true
+        - traefik.http.routers.archon-api-secure.service=archon-api
+        - traefik.http.routers.archon-api-secure.tls.certresolver=cloudflare
+    networks:
+      - traefik-public
+      - archon-internal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["python", "-m", "uvicorn", "src.server.main:app", "--host", "0.0.0.0", "--port", "${ARCHON_SERVER_PORT:-8181}"]
+
+  archon-mcp:
+    image: archon-archon-mcp:latest
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - TRANSPORT=sse
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_SERVICE_URL=http://archon-server:${ARCHON_SERVER_PORT:-8181}
+      - AGENTS_SERVICE_URL=http://archon-agents:${ARCHON_AGENTS_PORT:-8052}
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == uefi-docker-server
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.archon-mcp.entrypoints=web
+        - traefik.http.routers.archon-mcp.rule=Host(`archon-api.local.tophermayor.com`) && PathPrefix(`/mcp-stream`)
+        - traefik.http.routers.archon-mcp.priority=15
+        - traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.regex=^/mcp-stream(.*)
+        - traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.replacement=/mcp$$1
+        - traefik.http.routers.archon-mcp.middlewares=archon-mcp-rewrite
+        - traefik.http.services.archon-mcp.loadbalancer.server.port=${ARCHON_MCP_PORT:-8051}
+        - traefik.http.routers.archon-mcp-secure.entrypoints=websecure
+        - traefik.http.routers.archon-mcp-secure.rule=Host(`archon-api.local.tophermayor.com`) && PathPrefix(`/mcp-stream`)
+        - traefik.http.routers.archon-mcp-secure.priority=15
+        - traefik.http.routers.archon-mcp-secure.middlewares=archon-mcp-rewrite
+        - traefik.http.routers.archon-mcp-secure.tls=true
+        - traefik.http.routers.archon-mcp-secure.tls.certresolver=cloudflare
+    networks:
+      - traefik-public
+      - archon-internal
+
+  archon-agents:
+    image: archon-archon-agents:latest
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == uefi-docker-server
+      labels:
+        - traefik.enable=true
+        - traefik.http.middlewares.archon-agents-strip.stripPrefix.prefixes=/agents
+        - traefik.http.routers.archon-agents.entrypoints=web
+        - traefik.http.routers.archon-agents.rule=Host(`archon-api.local.tophermayor.com`) && PathPrefix(`/agents`)
+        - traefik.http.routers.archon-agents.priority=10
+        - traefik.http.routers.archon-agents.middlewares=archon-agents-strip
+        - traefik.http.services.archon-agents.loadbalancer.server.port=${ARCHON_AGENTS_PORT:-8052}
+        - traefik.http.routers.archon-agents-secure.entrypoints=websecure
+        - traefik.http.routers.archon-agents-secure.rule=Host(`archon-api.local.tophermayor.com`) && PathPrefix(`/agents`)
+        - traefik.http.routers.archon-agents-secure.priority=10
+        - traefik.http.routers.archon-agents-secure.middlewares=archon-agents-strip
+        - traefik.http.routers.archon-agents-secure.tls=true
+        - traefik.http.routers.archon-agents-secure.tls.certresolver=cloudflare
+    networks:
+      - traefik-public
+      - archon-internal
+
+  frontend:
+    image: archon-frontend:latest
+    environment:
+      - VITE_API_URL=https://archon-api.local.tophermayor.com
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_UI_PORT=5173
+      - HOST=0.0.0.0
+      - VITE_HMR_HOST=localhost
+      - VITE_HOST_CHECK=false
+      - VITE_ALLOWED_HOSTS=archon.local.tophermayor.com
+      - VITE_ORIGIN=https://archon.local.tophermayor.com
+      - HMR_HOST=archon.local.tophermayor.com
+      - DOCKER_ENV=true
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == uefi-docker-server
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.archon-ui.entrypoints=web
+        - traefik.http.routers.archon-ui.rule=Host(`archon.local.tophermayor.com`)
+        - traefik.http.routers.archon-ui.priority=1
+        - traefik.http.services.archon-ui.loadbalancer.server.port=5173
+        - traefik.http.routers.archon-ui-secure.entrypoints=websecure
+        - traefik.http.routers.archon-ui-secure.rule=Host(`archon.local.tophermayor.com`)
+        - traefik.http.routers.archon-ui-secure.priority=1
+        - traefik.http.routers.archon-ui-secure.tls=true
+        - traefik.http.routers.archon-ui-secure.tls.certresolver=cloudflare
+    networks:
+      - traefik-public
+      - archon-internal
+
+networks:
+  traefik-public:
+    external: true
+  archon-internal:
+    driver: overlay
+    attachable: true

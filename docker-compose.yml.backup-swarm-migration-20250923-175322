@@ -1,0 +1,164 @@
+services:
+  archon-server:
+    build:
+      context: ./python
+      dockerfile: Dockerfile.server
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        ARCHON_SERVER_PORT: ${ARCHON_SERVER_PORT:-8181}
+    container_name: Archon-Server
+    ports:
+      - "${ARCHON_SERVER_PORT:-8181}:${ARCHON_SERVER_PORT:-8181}"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.uds-label=true"
+      - "traefik.http.routers.archon-api.entrypoints=http"
+      - "traefik.http.routers.archon-api.rule=Host(`archon-api.uds.tophermayor.com`)"
+      - "traefik.http.routers.archon-api.priority=10"
+      - "traefik.http.services.archon-api.loadbalancer.server.port=${ARCHON_SERVER_PORT:-8181}"
+      - "traefik.http.services.archon-api.loadbalancer.passhostheader=true"
+      - "traefik.http.routers.archon-api-secure.entrypoints=https"
+      - "traefik.http.routers.archon-api-secure.rule=Host(`archon-api.uds.tophermayor.com`)"
+      - "traefik.http.routers.archon-api-secure.priority=10"
+      - "traefik.http.routers.archon-api-secure.tls=true"
+      - "traefik.http.routers.archon-api-secure.service=archon-api"
+    networks:
+      - app-network
+      - traefik-uds
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./python/src:/app/src
+      - ./python/tests:/app/tests
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["python", "-m", "uvicorn", "src.server.main:socket_app", "--host", "0.0.0.0", "--port", "${ARCHON_SERVER_PORT:-8181}", "--reload"]
+    # healthcheck moved into image (Dockerfile.server) as /usr/local/bin/archon-healthcheck.sh
+
+  archon-mcp:
+    build:
+      context: ./python
+      dockerfile: Dockerfile.mcp
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        ARCHON_MCP_PORT: ${ARCHON_MCP_PORT:-8051}
+    container_name: Archon-MCP
+    ports:
+      - "${ARCHON_MCP_PORT:-8051}:${ARCHON_MCP_PORT:-8051}"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - TRANSPORT=sse
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_SERVICE_URL=http://archon-server:${ARCHON_SERVER_PORT:-8181}
+      - AGENTS_SERVICE_URL=http://archon-agents:${ARCHON_AGENTS_PORT:-8052}
+      - ARCHON_MCP_PORT=${ARCHON_MCP_PORT:-8051}
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.uds-label=true"
+      - "traefik.http.routers.archon-mcp.entrypoints=http"
+      - "traefik.http.routers.archon-mcp.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
+      - "traefik.http.routers.archon-mcp.priority=15"
+      - "traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.regex=^/mcp-stream(.*)"
+      - "traefik.http.middlewares.archon-mcp-rewrite.replacepathregex.replacement=/mcp$1"
+      - "traefik.http.routers.archon-mcp.middlewares=archon-mcp-rewrite@docker"
+      - "traefik.http.services.archon-mcp.loadbalancer.server.port=${ARCHON_MCP_PORT:-8051}"
+      - "traefik.http.routers.archon-mcp-secure.entrypoints=https"
+      - "traefik.http.routers.archon-mcp-secure.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/mcp-stream`)"
+      - "traefik.http.routers.archon-mcp-secure.priority=15"
+      - "traefik.http.routers.archon-mcp-secure.middlewares=archon-mcp-rewrite@docker"
+      - "traefik.http.routers.archon-mcp-secure.tls=true"
+    networks:
+      - app-network
+      - traefik-uds
+    depends_on:
+      - archon-server
+
+  archon-agents:
+    build:
+      context: ./python
+      dockerfile: Dockerfile.agents
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        ARCHON_AGENTS_PORT: ${ARCHON_AGENTS_PORT:-8052}
+    container_name: Archon-Agents
+    ports:
+      - "${ARCHON_AGENTS_PORT:-8052}:${ARCHON_AGENTS_PORT:-8052}"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LOGFIRE_TOKEN=${LOGFIRE_TOKEN:-}
+      - SERVICE_DISCOVERY_MODE=docker_compose
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ARCHON_AGENTS_PORT=${ARCHON_AGENTS_PORT:-8052}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.uds-label=true"
+      - "traefik.http.middlewares.archon-agents-strip.stripPrefix.prefixes=/agents"
+      - "traefik.http.routers.archon-agents.entrypoints=http"
+      - "traefik.http.routers.archon-agents.rule=Host(`archon-api.uds.tophermayor.com`) && PathPrefix(`/agents`)"
+      - "traefik.http.routers.archon-agents.priority=10"
+      - "traefik.http.routers.archon-agents.middlewares=https-redirectscheme@file,archon-agents-strip@docker"
+      - "traefik.http.services.archon-agents.loadbalancer.server.port=${ARCHON_AGENTS_PORT:-8052}"
+    networks:
+      - app-network
+      - traefik-uds
+    # healthcheck moved into image or install curl in image; omitted here
+
+  frontend:
+    build: ./archon-ui-main
+    container_name: Archon-UI
+    ports:
+      - "${ARCHON_UI_PORT:-3737}:5173"
+      - "24678:24678"
+    environment:
+      - VITE_API_URL=https://archon-api.uds.tophermayor.com
+      - ARCHON_SERVER_PORT=${ARCHON_SERVER_PORT:-8181}
+      - HOST=0.0.0.0
+      - VITE_HMR_HOST=localhost
+      - VITE_HOST_CHECK=false
+      - VITE_ORIGIN=https://archon.uds.tophermayor.com
+      - HMR_HOST=archon.uds.tophermayor.com
+      - DOCKER_ENV=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.uds-label=true"
+      - "traefik.http.routers.archon-ui.entrypoints=http"
+      - "traefik.http.routers.archon-ui.rule=Host(`archon.uds.tophermayor.com`)"
+      - "traefik.http.routers.archon-ui.priority=1"
+      - "traefik.http.routers.archon-ui.middlewares=https-redirectscheme@file"
+      - "traefik.http.services.archon-ui.loadbalancer.server.port=5173"
+      - "traefik.http.routers.archon-ui-secure.entrypoints=https"
+      - "traefik.http.routers.archon-ui-secure.rule=Host(`archon.uds.tophermayor.com`)"
+      - "traefik.http.routers.archon-ui-secure.priority=1"
+      - "traefik.http.routers.archon-ui-secure.tls=true"
+    networks:
+      - app-network
+      - traefik-uds
+    # frontend healthcheck omitted in compose; consider baking into image or installing curl
+    volumes:
+      - ./archon-ui-main/src:/app/src
+      - ./archon-ui-main/public:/app/public
+    depends_on:
+      - archon-server
+
+
+networks:
+  app-network:
+    driver: bridge
+  traefik-uds:
+    external: true

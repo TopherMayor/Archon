@@ -43,6 +43,14 @@ def is_internal_request(request: Request) -> bool:
             if 16 <= second_octet <= 31:
                 logger.info(f"Allowing Docker network request from {client_host}")
                 return True
+    
+    # Check if it's a Docker Swarm overlay network (10.0.0.0/8 range)
+    if client_host.startswith("10."):
+        parts = client_host.split(".")
+        if len(parts) == 4:
+            # Allow all 10.x.x.x addresses (private network range)
+            logger.info(f"Allowing Docker Swarm network request from {client_host}")
+            return True
 
     # Check if it's localhost
     if client_host in ["127.0.0.1", "::1", "localhost"]:
